@@ -12,15 +12,15 @@ source("/Users/jakecarlson/Box Sync/PBP/VoterMatching/Analysis/VoterTurnout/pb_q
 
 ## Recoding ##
 
-# Rename general elections (Can't start variable w/ a number)
-setnames(data, 
-         old = c('2012G', '2013G', '2014G', '2015G'),
-         new = c('G2012', 'G2013', 'G2014', 'G2015'))
-
-# Rename primaries
-setnames(data, 
-         old = c('2012P', '2013P', '2014P', '2015P'),
-         new = c('P2012', 'P2013', 'P2014', 'P2015'))
+# Rename general elections and primaries (Can't start variable w/ a number)
+data <- rename(data, G2012 = `2012G`,
+       G2013 = `2013G`,
+       G2014 = `2014G`,
+       G2015 = `2015G`,
+       P2012 = `2012P`,
+       P2013 = `2013P`,
+       P2014 = `2014P`,
+       P2015 = `2015P`)
 
 ## Variable types ##
 # Dates, need extra code, because as.Date uses "68" as cutoff, so you had DoBs as "2051"
