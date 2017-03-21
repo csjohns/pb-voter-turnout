@@ -47,7 +47,3 @@ data$turnoutRate <- data$genelec/4
 # Add "Jewish" to "Race" variable, replaces 
 data <- data %>%
 mutate(Race1 = ifelse(Ethnicity=="Jewish", 'J', Race))
-
-
-
-table(data$Race)
