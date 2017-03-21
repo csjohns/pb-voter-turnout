@@ -44,3 +44,10 @@ data <- mutate(data, genelec = G2012 + G2013 + G2014 + G2015)
 # Average general election turnout
 data$turnoutRate <- data$genelec/4
 
+# Add "Jewish" to "Race" variable, replaces 
+data <- data %>%
+mutate(Race1 = ifelse(Ethnicity=="Jewish", 'J', Race))
+
+
+
+table(data$Race)
