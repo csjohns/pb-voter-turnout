@@ -38,18 +38,22 @@ data$G2013 <- recode(data$G2013, "'Y'=1; else=0", as.numeric.result = TRUE)
 data$G2014 <- recode(data$G2014, "'Y'=1; else=0", as.numeric.result = TRUE)
 data$G2015 <- recode(data$G2015, "'Y'=1; else=0", as.numeric.result = TRUE)
 
+#### Need to add this for primaries####
+
 ## New Variables ## 
 # Number of General elections voted in
 data <- mutate(data, genelec = G2012 + G2013 + G2014 + G2015)
 
 # Number of General elections voted in
-data <- mutate(data, primelec = P2012 + P2013 + P2014 + P2015)
+#### This doesn't work yet, need to fix above primary thing###
+# data <- mutate(data, primelec = P2012 + P2013 + P2014 + P2015)
 
 # Average general election turnout
 data$turnoutRate <- data$genelec/4
 
 # Average primary election turnout
-data$primaryRate <- data$/4
+#### ALSO DOESN"T WORK YET, NEED TO FIX PRIMARY THING####
+# data$primaryRate <- data$/4
 # Add "Jewish" to "Race" variable, replaces 
 data <- data %>%
 mutate(Race1 = ifelse(Ethnicity=="Jewish", 'J', Race))
