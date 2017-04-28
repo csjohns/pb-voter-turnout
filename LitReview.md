@@ -20,11 +20,17 @@ The mechanism is through the influence of *norms* (of voting). But in order for 
 
 The *calculus of voting* is split the utility of voting for *intrinsic* (people vote for their own satisfaction) and *extrinsic* (people vote because other people see them voting) benefits. The more likely that people know your voting record, the higher it multiplies the extrinsic benefits. If the intrinsic benefits plus the extrinsic benefits outweigh the costs of voting, then people should vote. Thus manipulating the benefits (such as by reminding people that there is intrinsic value to voting, or that others will know you did or didn't vote), should increase the likelihood of voting.
 
+## Individual factors for voting
+
+Some have thought that residential mobility makes people less likely to vote, since it requires re-registration. **Denny and Doyle (2009)** find that while more residential mobility decreases the likelihood of voting when people first become eligible to vote, it doesn't have much of an effect for subsequent voting.
+
 ## Habitual voting
 
 **Plutzer (2002)** says that people usually habitual voters or habitual non-voters. In general, people start out as habitual non-voters, partly because younger voters face high costs to entry (registration, no knowledge of how to do it, etc). People generally move from being habitual non-voters to being habitual voters. 
 
 There is an *inertia* for voting or not-voting. Things that can disrupt that inertia are things like residental moves (which require re-registration). There is an *initial level of voting* (when did you first vote) and *inertia* (how likely are you to keep voting). Some factors affect the initial level of voting (parents, education, etc). 
+
+**Denny and Doyle (2009)** find that indeed voting in a previous election increases the probability of voting in a subsequent election, but this effect is decreased when accounting for "initial conditions" - a propensity to vote before one is eligible. These initial conditions help distinguish people who may have a higher propensity to vote when they are first eligible. They use the longitudinal British National Childhoot Development Survey. They estimate the effect of lagged voter turnout for a naive model, they then re-estimate the model with the error term that acccounts for the probability of voting when first eligible. With this, the effect of people's voting habit (lagged voting) on later voter turnout decreased from 26% to 13%. The implications for this are that investments in political education prior to voting eligibility may have a positive effect of future voter turnout when first eligible, which can help with habit formation for later voting.
 
 ## Institutional factors for voting
 
