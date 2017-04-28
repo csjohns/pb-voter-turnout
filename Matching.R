@@ -1,0 +1,72 @@
+### Packages ###
+library(dplyr)
+library(car)
+library(data.table)
+library(chron)
+library(lubridate)
+
+## Load Data ##
+source("/Users/jakecarlson/Box Sync/PBP/VoterMatching/Analysis/VoterTurnout/pb_querydownload.R") # loads the access credentials
+
+### Data cleaning ###
+
+## Recoding ##
+
+# Rename general elections and primaries (Can't start variable w/ a number)
+data <- rename(data, G2012 = `2012G`,
+       G2013 = `2013G`,
+       G2014 = `2014G`,
+       G2015 = `2015G`,
+       P2012 = `2012P`,
+       P2013 = `2013P`,
+       P2014 = `2014P`,
+       P2015 = `2015P`,
+       P2016 = `2016P`)
+
+## Variable types ##
+# Dates, need extra code, because as.Date uses "68" as cutoff, so you had DoBs as "2051"
+data$DoB <- as.Date(data$DoB, "%m/%d/%y")
+data$DoB <- as.Date(ifelse(data$DoB > "2016-12-31", format(data$DoB, "19%y-%m-%d"), format(data$DoB)))
+
+data$DoR <- as.Date(data$DoR, "%m/%d/%y")
+data$DoR <- as.Date(ifelse(data$DoR > "2016-12-31", format(data$DoR, "19%y-%m-%d"), format(data$DoR)))
+
+
+# Turning election year variables to numeric, changing "Y" to 1, class to "numeric"
+data$G2012 <- recode(data$G2012, "'Y'=1; else=0", as.numeric.result = TRUE)
+data$G2013 <- recode(data$G2013, "'Y'=1; else=0", as.numeric.result = TRUE)
+data$G2014 <- recode(data$G2014, "'Y'=1; else=0", as.numeric.result = TRUE)
+data$G2015 <- recode(data$G2015, "'Y'=1; else=0", as.numeric.result = TRUE)
+
+#### Need to add this for primaries####
+
+## New Variables ## 
+# Number of General elections voted in
+data <- mutate(data, genelec = G2012 + G2013 + G2014 + G2015)
+
+# Number of General elections voted in
+#### This doesn't work yet, need to fix above primary thing###
+# data <- mutate(data, primelec = P2012 + P2013 + P2014 + P2015)
+
+# Average general election turnout
+data$turnoutRate <- data$genelec/4
+
+# Average primary election turnout
+#### ALSO DOESN"T WORK YET, NEED TO FIX PRIMARY THING####
+# data$primaryRate <- data$/4
+# Add "Jewish" to "Race" variable, replaces 
+data <- data %>%
+mutate(Race1 = ifelse(Ethnicity=="Jewish", 'J', Race))
+
+
+# testing party consistency for primaries - does Party match with Primary vote?
+# For dems, there's 21 cases
+data %>% 
+  filter(Party!="D",
+         P2012=="D" | P2013=="D" | P2014=="D" | P2015=="D" | P2016=="D")
+# For reps, there's 10
+data %>% 
+  filter(Party!="R",
+         P2012=="R" | P2013=="R" | P2014=="R" | P2015=="R" | P2016=="R")
+
+# Checked, for zero for all G, I, N, O, U, and W
