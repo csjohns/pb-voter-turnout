@@ -55,6 +55,7 @@ ed_turnout <- ed %>% group_by(ED, County) %>%
   mutate(type = "ed",
          County = tolower(County))
 
+#### ALL EDS ####
 # Joining PB voter turnout and ED turnout
 turnout <- full_join(pb_turnout, ed_turnout)
 # Checking full match:
@@ -86,5 +87,41 @@ turnout %>%
   theme_minimal() + facet_wrap(~County) +theme(legend.position = "bottom")
 ggsave("turnout_boxplot_county.pdf", width = 10, height = 7, units = "in")
 
+
+#### PB EDS ONLY ####
+### comparing like to like - including only EDs that had PB voters
+turnout <- ed_turnout %>% 
+  filter(ED %in% pb_turnout$ED) %>%
+  full_join(pb_turnout, .)
+# check merge
+table(turnout$type)
+
+# Reshaping long for plotting
+turnout <- turnout %>% gather(year, turnout, starts_with("G")) %>%
+  mutate(year = as.numeric(str_replace(year, "G", "")))
+
+# Uninspiring plot
+pt <- ggplot(turnout, aes(x = as.factor(year), y = turnout, color = type))
+pt + geom_jitter(alpha = 0.5)+ labs(x = "Year", y = "Turnout") + theme_minimal() + facet_wrap(~type)
+ggsave("PBonly_turnout_scatter.pdf")
+
+pt + geom_boxplot(notch = TRUE) + labs(x = "Year", y = "Turnout") + theme_minimal()
+ggsave("PBonly_turnout_boxplot.pdf", width = 8, units = "in")
+
+turnout %>%
+  filter(County %in% c("kings", "richmond", "queens", "new york", "bronx")) %>%
+  ggplot(aes(x = as.factor(year), y = turnout)) +
+  geom_jitter(aes(color = as.factor(County)),alpha = 0.5)+ labs(color = "County", x = "Year", y = "Turnout", 
+                                                                title = "Turnout in NYC EDs with PB voters") + 
+  theme_minimal() + facet_wrap(~type) +theme(legend.position = "bottom")
+ggsave("PBonly_turnout_scatter_county.pdf", width = 8, units = "in")
+
+turnout %>%
+  filter(County %in% c("kings", "richmond", "queens", "new york", "bronx")) %>%
+  ggplot(aes(x = as.factor(year), y = turnout)) +
+  geom_boxplot(aes(color = as.factor(type)),alpha = 0.5)+ labs(color = "Turnout type", x = "Year", y = "Turnout", 
+                                                               title = "Turnout in NYC EDs with PB voters") + 
+  theme_minimal() + facet_wrap(~County) +theme(legend.position = "bottom")
+ggsave("PBonly_turnout_boxplot_county.pdf", width = 10, height = 7, units = "in")
 
 
