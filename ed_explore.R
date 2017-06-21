@@ -13,6 +13,10 @@ library(ggplot2)
 source("credentials.R") # loads the access credentials
 source("dbDownload.R")
 
+stringNAs <- function(x){
+  ifelse(x, "", NA)
+}
+
 ### Loading and checking the data ###
 
 ed <- dbDownload(table = "electiondistricts", username = username, password = password, dbname = db.name, host = hostname, port = port)
@@ -21,6 +25,12 @@ rm(password, username, hostname, db.name, port) # if you want to remove the cred
 
 # checking match between pb and ed election district naming
 names(pb)
+pb <- pb %>% rename(pb_2012 = `2012PB`,
+                    pb_2013 = `2013PB`,
+                    pb_2014 = `2014PB`,
+                    pb_2015 = `2015PB`,
+                    pb_2016 = `2016PB`) %>%
+  mutate_at(vars(starts_with("pb_")), funs(ifelse(. == "", 0, .)))
 length(unique(pb$ED))
 length(intersect(unique(pb$ED), unique(ed$ED)))
 setdiff(unique(pb$ED), unique(ed$ED))
