@@ -24,11 +24,11 @@ names(pb)
 length(unique(pb$ED))
 length(intersect(unique(pb$ED), unique(ed$ED)))
 setdiff(unique(pb$ED), unique(ed$ED))
-# 2 pb$ED not in ed$ED: c("", "Tupper Lake - Ed 006")
+# 2 pb$ED not in ed$ED: c("", "Canandaiguat - Ed 003")
 
-## Checking for other Tupper Lake EDs
-ed$ED[str_detect(ed$ED, "Tupper")]
-## looks like it has EDs 001-005 for Tupper Lake, just not 006. Will disregard this missing ED
+## Checking for similar EDs
+ ed$ED[str_detect(ed$ED, "Cananda")]
+## Could be Town of Canandaigua - Ed 003?
 
 ### Turnout ###
 ## Calculating ED turnout among PB voters
