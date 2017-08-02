@@ -1,5 +1,5 @@
 dbDownload <- function(table,...){
-  
+  require(RMySQL)
   con <- dbConnect(MySQL(),...) #establish connection to DB
   query <- paste("SELECT * FROM ", table, ";",sep = "")
   rs <- dbSendQuery(con, query) #defines the query; this SQL here is the very basic query to pull the whole table, you can send any SQL that you like
