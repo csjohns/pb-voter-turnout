@@ -1,5 +1,10 @@
 ## Exploring initial PB voter regression
 library(tidyr)
+library(dplyr)
+library(stringr)
+library(margins)
+
+pb <- data
 
 names(pb)
 
