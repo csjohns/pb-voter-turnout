@@ -3,8 +3,10 @@ library(tidyr)
 library(dplyr)
 library(stringr)
 library(margins)
+library(lme4)
 
-pb <- data
+# must run "ed_explore.R" first
+
 
 names(pb)
 
@@ -35,7 +37,7 @@ glimpse(pb_long)
 pb_long <- pb_long %>% group_by(VANID) %>%
   arrange(VANID, year) %>%
   mutate(pbyear  = ifelse(pb == 1, year, NA),
-         pb_start = min(pbyear, na.rm = TRUE),
+         pb_start = min(pbyear, na.rm = TRUE), 
          pb_count = sum(pb, na.rm = TRUE))
 summary(pb_long)
 
@@ -61,3 +63,22 @@ summary(base_logit)
 predict(base_logit, newdata = expand.grid(year = 2013, after_pb = c(FALSE,TRUE)), type = "response")
 
 dydx(pb_long, base_logit, "after_pbTRUE", change = c(0,1))
+
+## expansions
+mod = turned_out ~ after_pb + as.factor(year) + repeater
+logit <- glm(mod, data = pb_long, family = binomial())
+summary(logit)
+
+# fixed effects
+base_formula = turned_out ~ after_pb + (as.factor(year)|VANID) #this model doesn't converge, may have to do w/ VANID
+base_fe <- glmer(base_formula, data = pb_long, family = binomial())
+summary(base_fe)
+
+# expansions
+mod <- glmer(turned_out ~ after_pb + election_type + (as.factor(year)|VANID),
+             data = pb_long, family = binomial())
+summary(mod)
+
+mmod <- turned_out ~ after_pb + election_type + 
+                    
+  
