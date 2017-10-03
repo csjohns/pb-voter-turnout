@@ -45,6 +45,8 @@ pb <- pb %>%
          g_2011 = `2011G`
   ) 
 
+
+## source("fullvfmerge.R") ##------------
 pb <- pb %>% rename(pb_2012 = `2012PB`,
                     pb_2013 = `2013PB`,
                     pb_2014 = `2014PB`,
@@ -78,7 +80,7 @@ pb_long <- pb_long %>% group_by(VANID) %>%
 summary(pb_long)
 
 elec_long <- pb %>% select(-starts_with("pb_")) %>%
-  gather(election, turned_out, starts_with("p_2"), starts_with("g_2")) %>%
+  gather(election, turned_out, starts_with("p_2"), starts_with("g_2"), starts_with("pp_")) %>%
   separate(election, c("election_type", "year")) %>%
   mutate(turned_out = ifelse(turned_out != '' & !is.na(turned_out), 1, 0),
          year = as.numeric(year)) 
@@ -91,6 +93,20 @@ pb_long <- pb_long %>%
          repeater = totpb > 1,
          age_at_vote = year - year(DoB) )
 
+ggplot(pb_long) + geom_bar(aes(x = as.factor(turned_out), fill = election_type), stat = "count", position = "dodge") + facet_wrap(~year)
+ggplot(pb_long) + geom_bar(aes(x = as.factor(turned_out), fill = as.factor(after_pb)), position = "dodge") + facet_wrap(~year)
+
+## joining pb_long with census data
+pb_long <- pb_long %>% mutate(countycode = recode(County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085")) %>%
+  mutate(countycode = ifelse(countycode %in% c("005", "047", "061", "081", "085"), countycode, NA),
+         tract = paste0(countycode, str_pad(CensusTract, 6, "left", "0")))
+
+pb_long <- pb_long %>% 
+  left_join(educ) %>%
+  left_join(inc) %>% 
+  left_join(race)
+
+
 ## preliminary year fixed effect regressions --------------------------------
 #define regression equation
 base_formula = turned_out ~ after_pb + as.factor(year)
@@ -101,13 +117,24 @@ summary(base_lm)
 base_logit <- glm(base_formula, data = pb_long, family = binomial())
 summary(base_logit)
 
-predict(base_logit, newdata = expand.grid(year = 2013, after_pb = c(0,1)), type = "response")
+predict(base_logit, newdata = expand.grid(year = 2013, after_pb = c(0,1)), type = "response", se.fit = TRUE)
 
 dydx(pb_long, base_logit, "after_pb", change = c(0,1))
 
 ## FE logit with covariates ----------------------------------------
-covar_formula <- turned_out ~ after_pb + as.factor(year) + Race + Sex + age_at_vote
+covar_formula <- turned_out ~ after_pb + as.factor(year) + Race + Sex + age_at_vote + election_type
 covar_logit <- glm(covar_formula, data = pb_long, family = binomial())
 summary(covar_logit)
 
-dydx(pb_long, covar_logit, "after_pbTRUE", change = c(0,1))
+dydx(pb_long, covar_logit, "after_pb", change = c(0,1))
+
+covar_formula <- turned_out ~ after_pb*repeater + as.factor(year) + Race + Sex + age_at_vote + election_type + high_school + 
+  medhhinc + white 
+covar_logit <- glm(covar_formula, data = pb_long, family = binomial())
+summary(covar_logit)
+
+
+##------ INDIVIDUAL FES
+
+base_formula <- turned_out ~ -1 + after_pb + year + (year|VANID)
+base_fe <- pb_long %>% mutate(year = as.factor(year)) %>% glmer(base_formula, data = ., family = binomial())
