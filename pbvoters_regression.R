@@ -82,7 +82,7 @@ summary(pb_long)
 elec_long <- pb %>% select(-starts_with("pb_")) %>%
   gather(election, turned_out, starts_with("p_2"), starts_with("g_2"), starts_with("pp_")) %>%
   separate(election, c("election_type", "year")) %>%
-  mutate(turned_out = ifelse(turned_out != '' & !is.na(turned_out), 1, 0),
+  mutate(turned_out = ifelse(turned_out %in% c("A", "D", "R", "Y"), 1, 0),
          year = as.numeric(year)) 
 
 pb_long <- pb_long %>% full_join(elec_long)
