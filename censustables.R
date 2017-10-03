@@ -20,7 +20,6 @@ race <- data.frame(
   stringsAsFactors = FALSE
 )
 
-<<<<<<< HEAD
 race <- race %>% 
   transmute(tract = tract,
          white = Hispanic.or.Latino.by.Race..Not.Hispanic.or.Latino./Hispanic.or.Latino.by.Race..Total.,
@@ -30,9 +29,6 @@ race <- race %>%
          latinx = Hispanic.or.Latino.by.Race..Hispanic.or.Latino./Hispanic.or.Latino.by.Race..Total.,
          mixed = Hispanic.or.Latino.by.Race..Not.Hispanic.or.Latino..Two.or.more.races./Hispanic.or.Latino.by.Race..Total.,
          other = Hispanic.or.Latino.by.Race..Not.Hispanic.or.Latino..Some.other.race.alone/Hispanic.or.Latino.by.Race..Total.)
-
-=======
->>>>>>> 3421ce28f7c2401a8857679ff010e7e69bcf6114
 
 
 ## MED HH INCOME
@@ -80,15 +76,9 @@ pb <- pb %>% mutate(countycode = recode(County, BRONX = "005", KINGS = "047", `N
          tract = paste0(countycode, str_pad(CensusTract, 6, "left", "0")))
 
 pbt <- pb %>% 
-<<<<<<< HEAD
   left_join(educ) %>%
   left_join(inc) %>% 
   left_join(race)
 
 sum(is.na(pbt$medhhinc))
-=======
-  left_join(educ)
-
-sum(is.na(pbt$high_school))
->>>>>>> 3421ce28f7c2401a8857679ff010e7e69bcf6114
 pbt$City[is.na(pbt$high_school)]
