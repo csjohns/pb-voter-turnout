@@ -106,7 +106,6 @@ pb_long <- pb_long %>%
   left_join(inc) %>% 
   left_join(race)
 
-
 ## preliminary year fixed effect regressions --------------------------------
 #define regression equation
 base_formula = turned_out ~ after_pb + as.factor(year)
@@ -132,7 +131,6 @@ covar_formula <- turned_out ~ after_pb*repeater + as.factor(year) + Race + Sex +
   medhhinc + white 
 covar_logit <- glm(covar_formula, data = pb_long, family = binomial())
 summary(covar_logit)
-
 
 ##------ INDIVIDUAL FES
 
