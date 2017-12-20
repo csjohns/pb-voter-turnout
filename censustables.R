@@ -1,3 +1,5 @@
+
+
 ## Joining census to pb table
 
 #Download census tables:
@@ -71,14 +73,14 @@ educ <- educ %>%
   ) %>%
   select(tract, high_school, college)
 
-pb <- pb %>% mutate(countycode = recode(County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085")) %>%
-  mutate(countycode = ifelse(countycode %in% c("005", "047", "061", "081", "085"), countycode, NA),
-         tract = paste0(countycode, str_pad(CensusTract, 6, "left", "0")))
-
-pbt <- pb %>% 
-  left_join(educ) %>%
-  left_join(inc) %>% 
-  left_join(race)
-
-sum(is.na(pbt$medhhinc))
-pbt$City[is.na(pbt$high_school)]
+# pb <- pb %>% mutate(countycode = recode(County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085")) %>%
+#   mutate(countycode = ifelse(countycode %in% c("005", "047", "061", "081", "085"), countycode, NA),
+#          tract = paste0(countycode, str_pad(CensusTract, 6, "left", "0")))
+# 
+# pbt <- pb %>% 
+#   left_join(educ) %>%
+#   left_join(inc) %>% 
+#   left_join(race)
+# 
+# sum(is.na(pbt$medhhinc))
+# pbt$City[is.na(pbt$high_school)]

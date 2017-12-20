@@ -4,7 +4,7 @@ library(tidyr)
 library(lubridate)
 library(stringr)
 library(margins)
-
+library(ggplot2)
 
 source("credentials.R") # loads the access credentials
 source("dbDownload.R")
@@ -45,8 +45,10 @@ pb <- pb %>%
          g_2011 = `2011G`
   ) 
 
-
+####################################################################################################################3
+### To bring in the earlier years etc ###
 ## source("fullvfmerge.R") ##------------
+
 pb <- pb %>% rename(pb_2012 = `2012PB`,
                     pb_2013 = `2013PB`,
                     pb_2014 = `2014PB`,
@@ -93,10 +95,18 @@ pb_long <- pb_long %>%
          repeater = totpb > 1,
          age_at_vote = year - year(DoB) )
 
+#exploring distribution of PB voters across districts:
+pb_long %>% filter(pb == 1) %>% group_by(NYCCD, year) %>% tally() %>% 
+  ggplot() + geom_bar(aes(x = NYCCD, y = n, fill = NYCCD), stat = "identity") + facet_wrap(~year, ncol = 4) + 
+  coord_flip() + theme_minimal() + guides(fill = FALSE)
+
+#exploring distributions of voters across districts
+
 ggplot(pb_long) + geom_bar(aes(x = as.factor(turned_out), fill = election_type), stat = "count", position = "dodge") + facet_wrap(~year)
 ggplot(pb_long) + geom_bar(aes(x = as.factor(turned_out), fill = as.factor(after_pb)), position = "dodge") + facet_wrap(~year)
 
 ## joining pb_long with census data
+source("censustables.R")
 pb_long <- pb_long %>% mutate(countycode = recode(County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085")) %>%
   mutate(countycode = ifelse(countycode %in% c("005", "047", "061", "081", "085"), countycode, NA),
          tract = paste0(countycode, str_pad(CensusTract, 6, "left", "0")))

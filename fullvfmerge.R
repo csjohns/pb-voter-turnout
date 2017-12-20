@@ -53,3 +53,17 @@ pb <- pb %>%
          p_2016 = `2016P`,
          g_2016 = `2016G`
   ) 
+
+# the merge to PB seems imperfect. Worth investigating more, what does the vanid mean?
+#### to push modified columns back up to the DB
+## first create table with 2008-2011 update
+# UPDATE pb,pbupdate SET pb.2008G=pb.g_2008 ---Etc.
+# WHERE pb.vanid=pbupdate.vanvalueid;
+
+pb %>% filter(is.na(Voter.File.VANID)) %>% select(VANID, DWID, StateFileID, HHID, Voter.File.VANID) %>% write.csv(file = "unmatched.csv", row.names = FALSE)
+
+con <- dbConnect(MySQL(), username = username, password = password, dbname = db.name, host = hostname, port = port) #establish connection to DB
+dbWriteTable(con, name = "earlyvoters", value = pb )
+dbSendQuery(con, "UPDATE pb, earlyvoters SET pb.2008G = earlyvoters.g_2008, pb.2009G = earlyvoters.g_2009, pb.2010G = earlyvoters.g_2010, pb.2011G = earlyvoters.g_2011, pb.2016PP = earlyvoters.pp_2016, pb.2008G = earlyvoters.p_2008, pb.2009P = earlyvoters.p_2009, pb.2010P = earlyvoters.p_2010 WHERE pb.VANID = earlyvoters.VANID;")
+dbSendQuery(con, "drop table earlyvoters;")
+dbDisconnect(con)
