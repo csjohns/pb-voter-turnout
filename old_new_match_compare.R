@@ -1,5 +1,5 @@
 ### Comparing newly matched PB voter data to the original data up on the spreadsheet. 
-### Need to run the reshape code from the pbvoters_regression.R file (get to creating pb_long, prior to joining census data)
+### Need to run the reshape code from the pbvoters_regression.R file (get to creating pb_long, prior to creating elec_long (keeps it at 1 row per year, no extra rows for multiple elections))
 
 
 #run reshape for the original data
@@ -15,6 +15,7 @@ pb_both <- pb_long_orig %>% group_by() %>% mutate(VANID = as.numeric(VANID)) %>%
 
 # Are individuals' voting years shared by each?
 table(pb_both$pb.x, pb_both$pb.y)
+
 
 # how does the distribution of votes in each year compare across the two datasets?
 table(pb_both$pb.x, pb_both$pb.y, pb_both$year)
