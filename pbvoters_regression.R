@@ -1,19 +1,10 @@
 library(RColorBrewer)
 library(dplyr)
 library(tidyr)
-<<<<<<< HEAD
-library(dplyr)
-library(stringr)
-library(margins)
-library(lme4)
-
-# must run "ed_explore.R" first
-
-=======
 library(lubridate)
 library(stringr)
 library(margins)
-
+library(lme4)
 
 source("credentials.R") # loads the access credentials
 source("dbDownload.R")
@@ -31,7 +22,6 @@ pb <- pb_orig
 
 
 ## Exploring initial PB voter regression
->>>>>>> 6e6e3f0751f449bb32b744b9f04c7a86eb05df17
 
 names(pb)
 
@@ -83,13 +73,8 @@ summary(pb_long)
 pb_long <- pb_long %>% group_by(VANID) %>%
   arrange(VANID, year) %>%
   mutate(pbyear  = ifelse(pb == 1, year, NA),
-<<<<<<< HEAD
-         pb_start = min(pbyear, na.rm = TRUE), 
-         pb_count = sum(pb, na.rm = TRUE))
-=======
          pb_start = min(pbyear, na.rm = TRUE)
          )
->>>>>>> 6e6e3f0751f449bb32b744b9f04c7a86eb05df17
 summary(pb_long)
 
 elec_long <- pb %>% select(-starts_with("pb_")) %>%
@@ -125,27 +110,9 @@ covar_formula <- turned_out ~ after_pb + as.factor(year) + Race + Sex + age_at_v
 covar_logit <- glm(covar_formula, data = pb_long, family = binomial())
 summary(covar_logit)
 
-<<<<<<< HEAD
-dydx(pb_long, base_logit, "after_pbTRUE", change = c(0,1))
-
-## expansions
-mod = turned_out ~ after_pb + as.factor(year) + repeater
-logit <- glm(mod, data = pb_long, family = binomial())
-summary(logit)
+dydx(pb_long, covar_logit, "after_pbTRUE", change = c(0,1))
 
 # fixed effects
-base_formula = turned_out ~ after_pb + (as.factor(year)|VANID) #this model doesn't converge, may have to do w/ VANID
-base_fe <- glmer(base_formula, data = pb_long, family = binomial())
+base_formula2 = turned_out ~ after_pb + (1|VANID) #this model doesn't converge, may have to do w/ VANID
+base_fe <- glmer(base_formula2, data = pb_long, family = binomial())
 summary(base_fe)
-
-# expansions
-mod <- glmer(turned_out ~ after_pb + election_type + (as.factor(year)|VANID),
-             data = pb_long, family = binomial())
-summary(mod)
-
-mmod <- turned_out ~ after_pb + election_type + 
-                    
-  
-=======
-dydx(pb_long, covar_logit, "after_pbTRUE", change = c(0,1))
->>>>>>> 6e6e3f0751f449bb32b744b9f04c7a86eb05df17
