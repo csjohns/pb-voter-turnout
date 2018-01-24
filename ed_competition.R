@@ -24,12 +24,12 @@ results <- results_orig <-  dbDownload(table = "electionresults", username = use
 rm(password, username, hostname, db.name, port) # if you want to remove the credentials from your environment 
 
 ## creating unique election-race id
-results <- results %>% mutate(elec_id = paste(ED, ElectionYear, ElectionMonth, ElectionDay, RaceName, sep = "-"))
+results <- results %>% mutate(elec_id = paste(ED, ElectionYear, ElectionMonth, ElectionDay, Office, sep = "-"))
 
 ########################################################################################################################
 ### Filtering to max-voter race ("top ticket" races) to use as competitiveness measure ###
 
-max_race <- results %>% group_by(ED, ElectionYear, ElectionMonth, ElectionDay, RaceName) %>%
+max_race <- results %>% group_by(ED, ElectionYear, ElectionMonth, ElectionDay, Office) %>%
   mutate(totvotes = sum(VoteCount, na.rm = TRUE)) %>%
   group_by(ED, ElectionYear, ElectionMonth, ElectionDay) %>%
   filter(totvotes == max(totvotes)) 
@@ -39,13 +39,13 @@ max_race <- results %>% group_by(ED, ElectionYear, ElectionMonth, ElectionDay, R
 ### Calculating competitiveness, as margin of victory as percentage of total votes cast in that race in that ED ###
 
 compet <- max_race %>% 
-  group_by(ED, ElectionYear, ElectionMonth, ElectionDay, RaceName, Candidate) %>%
+  group_by(ED, ElectionYear, ElectionMonth, ElectionDay, Office, Candidate) %>%
   summarize(VoteCount = sum(VoteCount, na.rm = TRUE),
             totvotes = max(totvotes),
             n_ballot_lines = n()) %>% 
   mutate(vote_pct = VoteCount/totvotes) %>%
-  group_by(ED, ElectionYear, ElectionMonth, ElectionDay, RaceName) %>%
-  arrange(ED, ElectionYear, ElectionMonth, ElectionDay, RaceName, desc(VoteCount)) %>% 
+  group_by(ED, ElectionYear, ElectionMonth, ElectionDay, Office) %>%
+  arrange(ED, ElectionYear, ElectionMonth, ElectionDay, Office, desc(VoteCount)) %>% 
   mutate(runner_up_count = lead(VoteCount),
          vote_diff = VoteCount - runner_up_count,
          vote_diff_cum = VoteCount - sum(runner_up_count, na.rm = TRUE),

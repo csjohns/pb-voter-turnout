@@ -161,3 +161,4 @@ summary(covar_logit)
 # estimating with a linear model as converges more easily - adding individual level effects dampens the effect of PB a bit, but not substantially, stil positive and significant
 base_formula <- turned_out ~  after_pb + year + (1|VANID)
 base_fe <- pb_long %>% mutate(year = as.factor(year)) %>% lmer(base_formula, data = .)
+

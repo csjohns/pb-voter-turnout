@@ -69,4 +69,6 @@ data %>%
   filter(Party!="R",
          P2012=="R" | P2013=="R" | P2014=="R" | P2015=="R" | P2016=="R")
 
-# Checked, for zero for all G, I, N, O, U, and W
+## Also checked, for zero for all G, I, N, O, U, and W (code not kept)
+
+
