@@ -1,3 +1,6 @@
+
+library(RMySQL)
+
 dbDownload <- function(table,...){
   require(RMySQL)
   con <- dbConnect(MySQL(),...) #establish connection to DB
