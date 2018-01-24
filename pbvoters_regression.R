@@ -120,11 +120,3 @@ summary(covar_logit)
 # base_formula <- turned_out ~ after_pb + year + (1|VANID)
 # base_fe <- pb_long %>% mutate(year = as.factor(year)) %>% glmer(base_formula, data = ., family = binomial())
 
-<<<<<<< HEAD
-# estimating with a linear model as converges more easily - adding individual level effects dampens the effect of PB a bit, but not substantially, stil positive and significant
-base_formula <- turned_out ~  after_pb + year + (1|VANID)
-base_fe <- pb_long %>% mutate(year = as.factor(year)) %>% lmer(base_formula, data = .)
-
-=======
- 
->>>>>>> ce0b6191b4ba584ba70c51d3fb806416e3093aa1
