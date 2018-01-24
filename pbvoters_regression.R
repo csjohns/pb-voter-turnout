@@ -13,59 +13,18 @@ stringNAs <- function(x){
   ifelse(x, "", NA)
 }
 
-### Loading and checking the data ###
+### Loading new pb table (from ExploringSonyaMaster.R - using Sonya's updated export) #### 
 
 pb_orig <- dbDownload(table = "pb", username = username, password = password, dbname = db.name, host = hostname, port = port)
 rm(password, username, hostname, db.name, port) # if you want to remove the credentials from your environment 
 pb <- pb_orig
 
-
-
-## Exploring initial PB voter regression
-
-names(pb)
-
-## renaming/recoding variables----
-pb <- pb %>%
-  rename(g_2012 = `2012G`,
-         g_2013 = `2013G`,
-         g_2014 = `2014G`,
-         g_2015 = `2015G`,
-         pp_2016 = `2016PP`,
-         pp_2008 = `2008PP`,
-         p_2012 = `2012P`,
-         p_2013 = `2013P`,
-         p_2014 = `2014P`,
-         p_2015 = `2015P`,
-         p_2016 = `2016P`,
-         g_2016 = `2016G`,
-         g_2010 = `2010G`,
-         g_2008 = `2008G`,
-         g_2009 = `2009G`,
-         g_2011 = `2011G`
-  ) 
-
-## more renaming fun (resulting from adding additional years from full voter file)
-pb <- pb %>% rename(pb_2012 = `2012PB`,
-                    pb_2013 = `2013PB`,
-                    pb_2014 = `2014PB`,
-                    pb_2015 = `2015PB`,
-                    pb_2016 = `2016PB`) %>%
-  mutate_at(vars(starts_with("pb_")), funs(ifelse(. == "", 0, 1)))
-
-
-# Dealing with DoB
+# Dealing with DoB, calculating total PB votes (not that these will usually be off by 1 because 2014 has too many voters (everyone who came before))
 pb <- pb %>% 
   group_by(VANID) %>%
-  mutate(DoB = ifelse(DoB == "", NA, DoB),
-         DoB = as.Date(format(as.Date(DoB, format = "%m/%d/%y"), "19%y-%m-%d")),
+  mutate(DoB = mdy(DoB),
          totpb = sum(pb_2012, pb_2013, pb_2014, pb_2015 , pb_2016, na.rm = T)
   )
-
-#### TO RERUN THIS WITH THE DATA FROM OUR UPDATED MATCH!
-source("credentials.R") # loads the access credentials
-pb <- dbDownload(table = "pb_update", username = username, password = password, dbname = db.name, host = hostname, port = port)
-rm(password, username, hostname, db.name, port) # if you want to remove the credentials from your environment 
 
 
 ## Reshaping long for regression ----------------------------------------------------------------
@@ -76,6 +35,7 @@ pb_long <- pb %>% filter(totpb >0) %>% select(VANID, totpb, starts_with("pb_")) 
 glimpse(pb_long)
 summary(pb_long)
 
+# this code calculates pb start year - not that this code is good even though 2014 is a wacky error year since voters who didn't vote before 2014 will indeed have their start year be 2014
 pb_long <- pb_long %>% group_by(VANID) %>%
   arrange(VANID, year) %>%
   mutate(pbyear  = ifelse(pb == 1, year, NA),
@@ -86,7 +46,7 @@ summary(pb_long)
 elec_long <- pb %>% select(-starts_with("pb_")) %>%
   gather(election, turned_out, starts_with("p_2"), starts_with("g_2"), starts_with("pp_")) %>%
   separate(election, c("election_type", "year")) %>%
-  mutate(turned_out = ifelse(turned_out %in% c("A", "D", "R", "Y"), 1, 0),
+  mutate(turned_out = ifelse(turned_out != "", 1, 0),
          year = as.numeric(year)) 
 
 pb_long <- pb_long %>% full_join(elec_long)
@@ -94,8 +54,11 @@ pb_long <- pb_long %>%
   mutate(pb = ifelse(is.na(pb), 0, pb),
          after_pb = as.numeric(year > pb_start),
          after_pb = ifelse(is.na(after_pb), 0, after_pb),
-         repeater = totpb > 1,
+        # repeater = totpb > 1, removing this because errors in 2014 means every early voter is a repeater, which isn't correct
          age_at_vote = year - year(DoB) )
+## I think there are some nonsense ages in here and I need to investigate DoB coding more
+
+pb_long <- pb_long %>%  filter(year >= 2008)
 
 #exploring distribution of PB voters across districts:
 pb_long %>% filter(pb == 1) %>% group_by(NYCCD, year) %>% tally() %>% 
@@ -124,41 +87,44 @@ pb_long <- pb_long %>%
 # subsetting pb_long to only PB districts 23 & 39, as they're the only districts we have multiple years' lists:
 pb_long <- pb_long %>% filter(pbdistrict %in% c(23,39))
 
+## basic model with only fixed effects for year
 base_formula = turned_out ~ after_pb + as.factor(year)
 
 base_lm <- lm(base_formula, data = pb_long)
 summary(base_lm)
 
+## as logit
 base_logit <- glm(base_formula, data = pb_long, family = binomial())
 summary(base_logit)
 
 #getting marginal effect of having voted in PB (on predicted turnout) for two years (1-2 are not after pb, 3-4 are the same years assuming person did vote in a previous PB)
 predict(base_logit, newdata = expand.grid(year = c(2013, 2016), after_pb = c(0,1)), type = "response", se.fit = TRUE)
 
-
 #getting marginal effect of vote after pb
 dydx(pb_long, base_logit, "after_pb", change = c(0,1))[[1]] %>% mean
 
-##  logit with covariates ----------------------------------------
+## simple logit model with covariates ----------------------------------------
 covar_formula <- turned_out ~ after_pb + as.factor(year) + Race + age_at_vote + election_type  #+ Sex commented out for new data - prefect prediction in Sex- not enough variation in all xtabs. Could make sex Binary and it would run
 covar_logit <- glm(covar_formula, data = pb_long, family = binomial())
 summary(covar_logit)
 
-dydx(pb_long, covar_logit, "after_pb", change = c(0,1))[[1]] %>% mean
+dydx(pb_long, covar_logit, "after_pb", change = c(0,1))[[1]] %>% mean(na.rm = T)
 
 ## logit with even more covariates -> local census tract info AND interacting with whether voter was a repeated voter
-## both after PB and repeater both positive and significant - the interaction is negative, dampening the joint effect a bit but not enough to eliminate all amplification
-covar_formula <- turned_out ~ after_pb*repeater + as.factor(year) + Race  + age_at_vote + election_type + high_school + 
-  medhhinc + white #+ Sex again commented out sex for updated match
+covar_formula <- turned_out ~ after_pb + as.factor(year) + Race  + age_at_vote + election_type + high_school +  medhhinc + white #+ Sex again commented out sex for updated match
 covar_logit <- glm(covar_formula, data = pb_long, family = binomial())
 summary(covar_logit)
 
 ##------ HIERARCHICAL MODEL WITH RANDOM EFFECTS FOR INDIVIDUALS
 ## These don't work - non-converging! First hunch is that there are too many zeros
-# base_formula <- turned_out ~  after_pb + year + (1|VANID)
+# base_formula <- turned_out ~ after_pb + year + (1|VANID)
 # base_fe <- pb_long %>% mutate(year = as.factor(year)) %>% glmer(base_formula, data = ., family = binomial())
 
+<<<<<<< HEAD
 # estimating with a linear model as converges more easily - adding individual level effects dampens the effect of PB a bit, but not substantially, stil positive and significant
 base_formula <- turned_out ~  after_pb + year + (1|VANID)
 base_fe <- pb_long %>% mutate(year = as.factor(year)) %>% lmer(base_formula, data = .)
 
+=======
+ 
+>>>>>>> ce0b6191b4ba584ba70c51d3fb806416e3093aa1

@@ -9,7 +9,7 @@ pb_long_orig <- pb_long
 
 # inner join to get only voters and years shared across the data frames
 pb_both <- pb_long_orig %>% group_by() %>% mutate(VANID = as.numeric(VANID)) %>% 
-  inner_join(pb_long, by = c("VANID" = "VANID", "year" = "year"))
+  inner_join(pb_long, by = c("VANID" = "VANID", "year" = "year", "election_type"))
 
 # compare the votes across the two:
 
