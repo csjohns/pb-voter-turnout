@@ -143,4 +143,38 @@ margplot <- function(mod) {
     geom_pointrange() + coord_flip() + 
     labs(x = NULL, y = "Average Marginal Effects")
 }
-margplot(covar_logit)
+#margplot(covar_logit)
+
+# Effects of pb on turnout, by race
+
+## Method 1: add interaction term race * PB
+mod <- turned_out ~ after_pb*Racew + as.factor(year) + age_at_vote + election_type + high_school +  medhhinc + white
+mod_logit <- glm(mod, data = pb_long, family = binomial())
+summary(mod_logit)
+
+# In this model, the primary terms (race, after_pb) are positive and significant
+# The interaction terms are all negative, with less clear significance.
+
+# Graph for different predited probability of turnout before/afterPB, by race, for primaries
+preds <- data_frame()
+
+for (i in unique(pb_long$Racew)) {
+  newdata <- with(pb_long, data.frame(after_pb = c(0, 1), year = 2016, Racew = i,
+                                      age_at_vote = mean(age_at_vote, na.rm = TRUE),
+                                      election_type = "p", high_school = mean(high_school, na.rm = TRUE),
+                                      medhhinc = mean(medhhinc, na.rm = TRUE), white = mean(white, na.rm = TRUE)
+  ))
+  pred <- predict(mod_logit, newdata, type = "response")
+  names(pred) <- c("before_pb", "after_pb")
+  temp <- c(race = i, pred)
+  
+  preds <- bind_rows(preds, temp)
+}
+
+preds <- preds %>% gather("pb", "turnout", 2:3)
+preds$pb <- factor(preds$pb, levels = c("before_pb", "after_pb"))
+preds$turnout <- as.numeric(preds$turnout)
+
+ggplot(preds, aes(x= pb, y = turnout, group = race)) + 
+  geom_line(aes(color = race))
+# Shows that the positive effect on turnout is less for Black voters
