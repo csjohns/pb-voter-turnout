@@ -218,3 +218,22 @@ ggplot(preds, aes(x= pb, y = turnout, group = race)) +
   geom_line(aes(color = race)) +
   facet_wrap(~election)
 # See different effects for race, by election type
+
+# Method 2: This runs the model separately for different race
+fit_logit <- function(df) {
+  covar_formula <- turned_out ~ after_pb + as.factor(year) + age_at_vote + election_type + high_school +  medhhinc + white
+  covar_logit <- glm(covar_formula, data = df, family = binomial())
+}
+
+out <- pb_long %>% 
+  group_by(Race) %>% 
+  nest() %>% 
+  mutate(model = map(data, fit_logit),
+         tidied = map(model, tidy)) %>% 
+  unnest(tidied, .drop = TRUE)
+
+p <- ggplot(subset(out,term == "after_pb"), aes(x = Race, y = estimate,
+                                                ymin = estimate - 2*std.error,
+                                                ymax = estimate + 2*std.error,
+                                                group = term, color = term))
+p + geom_pointrange(position = position_dodge(width = 1))
