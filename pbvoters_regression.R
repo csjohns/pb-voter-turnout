@@ -128,3 +128,19 @@ summary(covar_logit)
 # base_formula <- turned_out ~ after_pb + year + (1|VANID)
 # base_fe <- pb_long %>% mutate(year = as.factor(year)) %>% glmer(base_formula, data = ., family = binomial())
 
+## Below here is Jake's chaos ##
+
+# Marginal effects
+## Create function to plot marginal effects (runs slow)
+margplot <- function(mod) {
+  margs <- margins(mod)
+  summary(margs)
+  
+  marg_gg <- as_tibble(summary(margs))
+  p <- ggplot(marg_gg, aes(x = reorder(factor, AME), y =  AME,
+                           ymin = lower, ymax = upper))
+  p + geom_hline(yintercept = 0, color = "gray80") +
+    geom_pointrange() + coord_flip() + 
+    labs(x = NULL, y = "Average Marginal Effects")
+}
+margplot(covar_logit)
