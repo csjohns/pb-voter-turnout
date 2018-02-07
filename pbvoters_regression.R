@@ -178,3 +178,43 @@ preds$turnout <- as.numeric(preds$turnout)
 ggplot(preds, aes(x= pb, y = turnout, group = race)) + 
   geom_line(aes(color = race))
 # Shows that the positive effect on turnout is less for Black voters
+
+# Method 1a, add district 
+mod <- turned_out ~ after_pb*Racew + as.factor(year) + age_at_vote + NYCCD*after_pb + election_type + high_school +  medhhinc + white
+mod_logit <- glm(mod, data = pb_long, family = binomial())
+summary(mod_logit)
+
+# Graph for different predited probability of turnout before/afterPB, by race, for election type
+
+mod <- turned_out ~ after_pb*Racew*election_type + as.factor(year) + age_at_vote + high_school +  medhhinc + white
+mod_logit <- glm(mod, data = pb_long, family = binomial())
+summary(mod_logit)
+# gets a little funny here, might be interacting too much
+# Blows up the std error for after_pb, not significant anymore
+
+preds <- data_frame()
+
+for (i in unique(pb_long$Racew)) {
+  for (j in unique(pb_long$election_type)) {
+    newdata <- with(pb_long, data.frame(after_pb = c(0, 1), year = 2016, Racew = i,
+                                        age_at_vote = mean(age_at_vote, na.rm = TRUE),
+                                        NYCCD = 39,
+                                        election_type = j, high_school = mean(high_school, na.rm = TRUE),
+                                        medhhinc = mean(medhhinc, na.rm = TRUE), white = mean(white, na.rm = TRUE)
+    ))
+    pred <- predict(mod_logit, newdata, type = "response")
+    names(pred) <- c("before_pb", "after_pb")
+    temp <- c(race = i, election = j, pred)
+    
+    preds <- bind_rows(preds, temp)
+  }
+}
+
+preds <- preds %>% gather("pb", "turnout", 3:4)
+preds$pb <- factor(preds$pb, levels = c("before_pb", "after_pb"))
+preds$turnout <- as.numeric(preds$turnout)
+
+ggplot(preds, aes(x= pb, y = turnout, group = race)) + 
+  geom_line(aes(color = race)) +
+  facet_wrap(~election)
+# See different effects for race, by election type
