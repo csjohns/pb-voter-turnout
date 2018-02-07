@@ -237,3 +237,9 @@ p <- ggplot(subset(out,term == "after_pb"), aes(x = Race, y = estimate,
                                                 ymax = estimate + 2*std.error,
                                                 group = term, color = term))
 p + geom_pointrange(position = position_dodge(width = 1))
+
+# Fixed effects
+# Not working, because of primary/general leads to duplicate years
+mod <- turned_out ~ after_pb*Race + as.factor(year) + age_at_vote + election_type + high_school +  medhhinc + white
+mod_fe <- plm(mod, data = pb_long, index = c("VANID", "year"),
+              model = "within")
