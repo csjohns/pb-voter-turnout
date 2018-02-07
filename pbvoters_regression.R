@@ -5,6 +5,9 @@ library(lubridate)
 library(stringr)
 library(margins)
 library(ggplot2)
+library(broom)
+library(purrr)
+library(plm)
 
 source("credentials.R") # loads the access credentials
 source("dbDownload.R")
@@ -82,6 +85,11 @@ pb_long <- pb_long %>%
   left_join(race)
 
 ## preliminary year fixed effect regressions --------------------------------
+
+# reset reference category for race to "white"
+pb_long$Race <- as.factor(pb_long$Race)
+pb_long$Racew <- relevel(pb_long$Race, ref = "W")
+
 #define regression equation
 
 # subsetting pb_long to only PB districts 23 & 39, as they're the only districts we have multiple years' lists:
@@ -120,26 +128,3 @@ summary(covar_logit)
 # base_formula <- turned_out ~ after_pb + year + (1|VANID)
 # base_fe <- pb_long %>% mutate(year = as.factor(year)) %>% glmer(base_formula, data = ., family = binomial())
 
-# Graph for different predited probability of turnout before/afterPB, by race, for primaries
-preds <- data_frame()
-
-for (i in unique(pb_long$Race)) {
-newdata <- with(pb_long, data.frame(after_pb = c(0, 1), year = 2016, Race = i,
-                                    age_at_vote = mean(age_at_vote, na.rm = TRUE),
-                                    election_type = "p", high_school = mean(high_school, na.rm = TRUE),
-                                    medhhinc = mean(medhhinc, na.rm = TRUE), white = mean(white, na.rm = TRUE)
-                                                       ))
-pred <- predict(covar_logit, newdata, type = "response")
-names(pred) <- c("before_pb", "after_pb")
-temp <- c(race = i, pred)
-
-preds <- bind_rows(preds, temp)
-}
-
-preds <- preds %>% gather("pb", "turnout", 2:3)
-preds$pb <- factor(preds$pb, levels = c("before_pb", "after_pb"))
-preds$turnout <- as.numeric(preds$turnout)
-
-ggplot(preds, aes(x= pb, y = turnout, group = race)) + 
-  geom_line(aes(color = race))
-# Graph looks like similar effect for all race groups. There's about a 0.008 range of difference.
