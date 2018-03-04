@@ -66,7 +66,8 @@ educ <- educ %>%
                            Educational.Attainment.for.the.Population.25.Years.and.Over..Master.s.degree +
                            Educational.Attainment.for.the.Population.25.Years.and.Over..Professional.school.degree +
                            Educational.Attainment.for.the.Population.25.Years.and.Over..Doctorate.degree)/Educational.Attainment.for.the.Population.25.Years.and.Over..Total.)*100,
-         college = ((Educational.Attainment.for.the.Population.25.Years.and.Over..Bachelor.s.degree +
+         college = ((Educational.Attainment.for.the.Population.25.Years.and.Over..Associate.s.degree +
+                       Educational.Attainment.for.the.Population.25.Years.and.Over..Bachelor.s.degree +
                        Educational.Attainment.for.the.Population.25.Years.and.Over..Master.s.degree +
                        Educational.Attainment.for.the.Population.25.Years.and.Over..Professional.school.degree +
                        Educational.Attainment.for.the.Population.25.Years.and.Over..Doctorate.degree)/Educational.Attainment.for.the.Population.25.Years.and.Over..Total.)*100
