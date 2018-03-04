@@ -37,8 +37,7 @@ pbdistricts <- na.omit(pbdistricts)
 
 # loading full voter file
 voterfile <- fread("personfileFULL20170731-15112428081/personfileFULL20170731-15112428081.txt")
-voterfile <- voterfile[!CityCouncilName %in% pbdistricts]
-voterfile <- voterfile[!`Voter File VANID` %in% pb$VANID]
+voterfile <- voterfile[!CityCouncilName %in% pbdistricts & !`Voter File VANID` %in% pb$VANID]
 
 voterfile <- as.data.frame(voterfile)
 
@@ -103,10 +102,16 @@ voterfile <- voterfile  %>%
 ### Including census data ### ----------------------------------------------------------------------------------------------------------------------------
   #source("censustables.R")
   load("census.Rdata")
-  voterfile <- voterfile %>% mutate(countycode = recode(County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085")) %>%
-    mutate(countycode = ifelse(countycode %in% c("005", "047", "061", "081", "085"), countycode, NA),
-           tract = paste0(countycode, str_pad(CensusTract, 6, "left", "0")))
+  voterfile <- voterfile %>% filter(County %in% c("BRONX", "KINGS", "NEW YORK", "QUEENS", "RICHMOND")) %>% 
+    mutate(countycode = recode(voterfile$County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085"),
+           tract = paste0(voterfile$countycode, str_pad(voterfile$CensusTract, 6, "left", "0")))
+  # voterfile$countycode <- recode(voterfile$County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085")
+  # voterfile$tract <- paste0(voterfile$countycode, str_pad(voterfile$CensusTract, 6, "left", "0"))
   
+  # voterfile <- voterfile %>% 
+  #  mutate(countycode = recode(County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085"),
+  #         tract = paste0(countycode, str_pad(CensusTract, 6, "left", "0")))
+  gc()
   voterfile <- voterfile %>% 
     left_join(educ) %>%
     left_join(inc) %>% 
@@ -132,16 +137,22 @@ voterfile <- voterfile  %>%
   ## filter to rows with classes
   matchable_vans <- exact_df$VANID[!is.na(m.exact$subclass)]
   
+  rm(m.exact)
+  gc()
   
+  
+  
+  ### Creating matching dataframe based on the potential matches from m.exact --------------------------------------------------------------------------------
   matching_df <- voterfile %>%
-    mutate(agegroup = cut(age, breaks = c(0, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60,65, 70,75, 80,85, 90, Inf))) %>% 
     filter(VANID %in% matchable_vans) %>% 
+    mutate(agegroup = cut(age, breaks = c(0, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60,65, 70,75, 80,85, 90, Inf))) %>% 
     select(VANID, pb, Race, agegroup, Sex, g_early, g_2008, g_2009, g_2010, g_2011, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, white, college, medhhinc) %>% 
     na.omit()
   
   #m.out <- matchit(pb ~ Race + age + Sex + g_early + g_2008 + g_2009 + g_2010 + g_2011 + p_early + p_2008 + p_2009 + p_2010 + pp_2004 + pp_2008 + white + high_school + medhhinc,
   #          data = matching_df, method = "cem", k2k = TRUE)
 #ps  <- pair(m.out, matching_df)
+### Implementing CEM - defining cutpoints for continuous variables  --------------------------------------------------------------------------------
   
 df_cutpoints <- list(
   white = quantile(matching_df$white, c(0,.2,.4,.6,.8,1)),
@@ -162,7 +173,8 @@ df_cutpoints <- list(
         verbose = 1) ### DON'T USE K2K - TOO MUCH MEMORY DEMAND. RANDOMLY DRAW FROM STRATA AFTER THE FACT
 
     c.out
-  
+    
+### Creating the pairwise k2k match including one random sampled control for every pb voter  --------------------------------------------------------------------------------
     c.match <- data.frame(VANID = matching_df$VANID, pb = matching_df$pb, cem_group = c.out$strata)
     
     c.match <- c.match %>% 
@@ -189,14 +201,15 @@ df_cutpoints <- list(
       select(-n_sample) %>% 
       bind_rows(c.control)
     
-    c.test <- c.match %>% select(-n_treat, -n_control) %>% 
-      left_join(voterfile, by = "VANID")
+    ### creating analysis DF by joining voterfile to the CEM match output
+    vf_analysis <- c.match %>% select(-n_treat, -n_control) %>% 
+      left_join(voterfile)
     
     #### filtering voter file to match -------------------------------------
-    vf_analysis <- voterfile %>% filter(VANID %in% c.match$VANID)
+    # vf_analysis <- voterfile %>% filter(VANID %in% c.match$VANID)
     
 
-    ####  replicating transformation and first regressions with the matched data -----------------
+####  replicating transformation and first regressions with the matched data -------------------------------------------------------------------------------------
     
     # Dealing with DoB, calculating total PB votes (not that these will usually be off by 1 because 2014 has too many voters (everyone who came before))
     pb <- vf_analysis %>% 
