@@ -37,7 +37,7 @@ pbdistricts <- na.omit(pbdistricts)
 
 # loading full voter file
 voterfile <- fread("personfileFULL20170731-15112428081/personfileFULL20170731-15112428081.txt")
-voterfile <- voterfile[!CityCouncilName %in% pbdistricts & !`Voter File VANID` %in% pb$VANID]
+voterfile <- voterfile[!CityCouncilName %in% pbdistricts & !`Voter File VANID` %in% pb$VANID & !is.na(CityCouncilName)]
 
 voterfile <- as.data.frame(voterfile)
 
@@ -164,7 +164,9 @@ df_cutpoints <- list(
   c.out <- matching_df %>% select(-VANID) %>% 
     mutate_at(vars(starts_with("g_"), starts_with(("p_"))), as.factor) %>% 
     mutate(pp_2004 = as.factor(pp_2004),
-           pp_2008 = as.factor(pp_2008)) %>% 
+           pp_2008 = as.factor(pp_2008),
+           Race = as.factor(Race),
+           Sex = as.factor(Sex)) %>% 
     cem(treatment = "pb", data = .,  
         grouping = list(
           g_early = list("0",c("1,2"), c("3", "4", "5"), c("6", "7,", "8")), 
@@ -175,12 +177,13 @@ df_cutpoints <- list(
     c.out
     
 ### Creating the pairwise k2k match including one random sampled control for every pb voter  --------------------------------------------------------------------------------
-    c.match <- data.frame(VANID = matching_df$VANID, pb = matching_df$pb, cem_group = c.out$strata)
+    c.match <- data.frame(VANID = matching_df$VANID, pb = matching_df$pb, cem_group = c.out$strata, race =matching_df$Race)
     
     c.match <- c.match %>% 
       group_by(cem_group) %>% 
       mutate(n_treat = sum(pb),
-             n_control = sum(pb==0)) 
+             n_control = sum(pb==0)) %>% 
+      filter(n_treat > 0 & n_control > 0)
     
     c.treat <- c.match %>% filter(pb == 1 & n_control > 0)
     
@@ -205,6 +208,8 @@ df_cutpoints <- list(
     vf_analysis <- c.match %>% select(-n_treat, -n_control) %>% 
       left_join(voterfile)
     
+    vf_analysis %>% filter(pb == 1) %>% select(Race, Sex, medhhinc, college, white, g_early, p_early, age) %>% summary()
+    vf_analysis %>% filter(pb == 0) %>% select(Race, Sex, medhhinc, college, white, g_early, p_early, age)  %>% summary()
     #### filtering voter file to match -------------------------------------
     # vf_analysis <- voterfile %>% filter(VANID %in% c.match$VANID)
     
@@ -224,7 +229,7 @@ df_cutpoints <- list(
       gather( year, pb, starts_with("pb_")) %>%
       mutate(year = as.numeric(str_replace(year, "pb_", "")),
              pb = as.numeric(pb))
-    glimpse(pb_long)
+      glimpse(pb_long)
     summary(pb_long)
     
     # this code calculates pb start year - not that this code is good even though 2014 is a wacky error year since voters who didn't vote before 2014 will indeed have their start year be 2014
@@ -251,17 +256,96 @@ df_cutpoints <- list(
     ## I think there are some nonsense ages in here and I need to investigate DoB coding more
     
     pb_long <- pb_long %>%  filter(year >= 2008)
-    
+    cc
     
     ## simple logit model with covariates ----------------------------------------
+    dist39_groups <- unique(pb$cem_group[pb$NYCCD ==39 | pb$pbdistrict == 39])
+    
     library(margins)
-    covar_formula <- turned_out ~ pb + after_pb + as.factor(year) +  election_type  #+ Sex commented out for new data - prefect prediction in Sex- not enough variation in all xtabs. Could make sex Binary and it would run
-    covar_logit <- glm(covar_formula, data = pb_long, family = binomial())
+    covar_formula <- turned_out ~ pb + after_pb + as.factor(year) +  election_type  + Race + age + Sex + medhhinc #+ Sex commented out for new data - prefect prediction in Sex- not enough variation in all xtabs. Could make sex Binary and it would run
+    covar_logit <- pb_long %>% glm(covar_formula, data = ., family = binomial())
     summary(covar_logit)
     dydx(pb_long, covar_logit, "after_pb", change = c(0,1))[[1]] %>% mean
-
+    covar_lm <- lm(covar_formula, data = pb_long, family = binomial())
+    summary(covar_lm)
     
     ## Trying with lmer getting random effects for individuals
     library(lme4)
-logit_lme_f <- turned_out ~ pb + after_pb + as.factor(year) + election_type + (1 | VANID)    
-lme_logit <- glmer(logit_lme_f, data = pb_long, family = binomial())    
+    
+    only39 <- pb_long %>% filter(cem_group %in% dist39_groups) %>% group_by() %>% 
+      mutate(turned_out = ifelse(is.na(turned_out), 0, turned_out),
+             VANID = as.factor(VANID), 
+             NYCCD = as.factor(NYCCD))
+    ggplot(only39) + geom_bar(aes(x = as.factor(turned_out), fill = election_type), stat = "count", position = "dodge") + facet_wrap(~year)
+    ggplot(only39) + geom_bar(aes(x = as.factor(turned_out), fill = as.factor(after_pb)), position = "dodge") + facet_wrap(~year)
+    
+    bas_log <- glm(turned_out ~ pb + after_pb + as.factor(year) + election_type , data = only39)
+logit_lme_f <- turned_out ~ pb + after_pb + as.factor(year) + election_type + (1 | VANID) 
+lme_logit <- glmer(logit_lme_f, data = only39, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
+
+
+logit_full_fm <- turned_out ~ pb + after_pb + after_pb:Race + as.factor(year) + election_type + age + medhhinc + (1 | VANID)    
+lme_full <-  glmer(logit_full_fm, data = only39, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
+AIC(lme_full)
+BIC(lme_full)
+AIC(lme_logit)
+BIC(lme_logit)
+
+#predicted turnout
+nd <- expand.grid(pb = 0, after_pb = c(0, 1), Race = c("W", "B", "H", "W", "A", "U"), 
+                  year = c(2016), election_type = "g")
+nd$preds <-  predict(lme_full, newdata = nd, se.fit = TRUE, type = "response", re.form = NA)
+
+## poorer model fit. BUt huge effects from race (SE?).  Possibly because turnout is so much lower, and the logit kicks in more?
+only39 %>% mutate(turned_out = factor(turned_out, levels = c(0, 1), labels = c("Did not vote", "Voted")),
+                  after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB"))) %>% 
+  ggplot() + geom_bar(aes(x = as.factor(year),  fill = turned_out), position = "fill") + 
+  facet_grid(Race~after_pb, scales = "free") +coord_flip() + scale_y_continuous(labels = scales::percent) +
+  labs(y="", x="") +theme_minimal()
+
+
+for (t in c("after_pb", "after_pb:RaceB", "after_pb:RaceH", "after_pb:RaceW", "after_pb:RaceA")){
+mean(dydx(head(only39), lme_full, t))
+}
+
+newdat <-  expand.grid(pb = 0, after_pb = c(0, 1), year = c(2016), election_type = "g")
+regressPredict <- function(df, form, newdat){
+  newdat$pred <- glmer(form, data = df, family = binomial(), nAGQ = 0) %>% 
+    predict(., newdata = newdat, type = "response", re.form = NA)
+  return(newdat)
+}
+
+glmer_byRace <- only39 %>% 
+  group_by(Race) %>% 
+  do(tidy(glmer(logit_lme_f, data = ., family = binomial(), nAGQ = 0)))
+
+glmer_predbyRace <- only39 %>% 
+  group_by(Race) %>% 
+  do(regressPredict(df = ., form = logit_lme_f, newdat = newdat))
+
+ggplot(subset(glmer_byRace, term == "after_pb"), aes(y = estimate, x = Race)) + 
+  geom_pointrange(aes(ymin = estimate - 1.96*std.error, ymax = estimate + 1.96*std.error)) +
+  coord_flip() + theme_minimal()
+
+tidy(lme_logit) %>% 
+  mutate(Race = "All") %>% 
+  bind_rows(glmer_byRace) %>% 
+  filter(term == "after_pb") %>% 
+  mutate(Race = factor(Race, levels = c("All", "W", "B", "H", "A", "U"), labels = c("All", "White", "Black", "Hispanic", "Asian", "Unknown"))) %>% 
+  ggplot(aes(y = estimate, x = Race)) + 
+  geom_pointrange(aes(ymin = estimate - 1.96*std.error, ymax = estimate + 1.96*std.error)) +
+  coord_flip() + theme_minimal()
+
+
+newdat %>% 
+  mutate(pred = predict(lme_logit, newdata = ., type = "response", re.form = NA),
+         Race = "All") %>%
+  bind_rows(glmer_predbyRace) %>% 
+  mutate(after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB")),
+         Race = factor(Race, levels = c("All", "W", "B", "H", "A", "U"), labels = c("All", "White", "Black", "Hispanic", "Asian", "Unknown"))) %>% 
+  ggplot(aes(y = pred, x = Race)) + 
+  geom_point(aes(color = after_pb)) +
+  labs(title = "Predicted probability of voting in general election in 2016 \nwith and without PB (in a non-PB district)", 
+       x = "", y = "Predicted probability", color = "") +
+  coord_flip() +
+  theme_minimal()

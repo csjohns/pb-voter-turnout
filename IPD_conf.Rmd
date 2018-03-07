@@ -1,0 +1,37 @@
+---
+title: "Participatory Budgeting and Voting"
+author: "Carolina Johnson, Jake Carlson, Sonya Reynolds"
+date: "March 5, 2018"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Does participatory budgeting encourage turnout in regular elections?
+
+Participant surveys and anecdotes regularly suggest that Participatory Budgeting participation increases motivation to vote in ordinary elections.
+
+This project is the first effort to systematically test these claims using individual voting behavior in NYC.
+
+The tasks (each with their own challenges): 
+
+1) get individual voter lists from implementing council districts 
+2) find individuals in the voter file on the basis of name, DOB, etc
+3) match PB voters to similar people in districts where PB was not implemented
+4) estimate the different probabilities of voting for similar people before and after PB participation
+
+## Who could we find?
+
+% matched
+% race etc, voting behavior.
+% How many were matched to non-voters?
+
+*Include a plot*
+
+## Did PB have an impact?
+
+* Plot 1: All and split by race
+* Plot 2: All and split by neighborhood wealth
+* Plot 3: All and split by age
