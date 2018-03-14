@@ -9,8 +9,8 @@ library(data.table)
 library(MatchIt)
 library(cem)
 
-source("credentials.R") # loads the access credentials
-source("dbDownload.R")
+#source("credentials.R") # loads the access credentials
+#source("dbDownload.R")
 
 stringNAs <- function(x){
   ifelse(x, "", NA)
@@ -23,7 +23,8 @@ rm(password, username, hostname, db.name, port) # if you want to remove the cred
 # load("pb_orig.Rdata")
 #pb <- pb_orig 
 #rm(pb_orig)
-pb <- pb %>% select(-DWID, -row_names)
+pb <- pb %>% select(-DWID, -row_names) %>% 
+  filter(DoR != "" & !is.na(DoR))
 pb <- pb %>% mutate(DoB = mdy(DoB),
                     pb = 1)
 
@@ -37,7 +38,7 @@ pbdistricts <- na.omit(pbdistricts)
 
 # loading full voter file
 voterfile <- fread("personfileFULL20170731-15112428081/personfileFULL20170731-15112428081.txt")
-voterfile <- voterfile[!CityCouncilName %in% pbdistricts & !`Voter File VANID` %in% pb$VANID & !is.na(CityCouncilName)]
+voterfile <- voterfile[!CityCouncilName %in% pbdistricts & !`Voter File VANID` %in% pb$VANID & !is.na(CityCouncilName) & RegistrationStatusName != "Applicant"]
 
 voterfile <- as.data.frame(voterfile)
 
@@ -69,6 +70,8 @@ voterfile <- voterfile  %>%
     select(-starts_with("Special"), -ends_with("Party")) %>%
     select(-Lat, -Long, -starts_with("Street"), -starts_with("Apt"), - VHHID, -StateFileID, -DWID, 
            -starts_with("Reported"))
+  voterfile <- voterfile %>% 
+    filter(DoR != "")
   
   ### Load compare structure of the two data frames ### -------------------------------------------------------------------------------------
   
@@ -77,6 +80,7 @@ voterfile <- voterfile  %>%
   # 4618885 + nrow(pb)
   ### Join to voter file ### -------------------------------------------------------------------------------------
   voterfile <- pb %>% 
+    filter(pbdistrict %in% c(23, 39)) %>% ## this is filtering to only districts we have full/near full data for
     #select(-row_names, -DWID,VANID, starts_with("pb")) %>% 
     #full_join(voterfile, .)
     bind_rows(voterfile)
@@ -103,11 +107,11 @@ voterfile <- voterfile  %>%
   #source("censustables.R")
   load("census.Rdata")
   voterfile <- voterfile %>% filter(County %in% c("BRONX", "KINGS", "NEW YORK", "QUEENS", "RICHMOND")) %>% 
-    mutate(countycode = recode(voterfile$County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085"),
-           tract = paste0(voterfile$countycode, str_pad(voterfile$CensusTract, 6, "left", "0")))
+    mutate(countycode = recode(County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085"),
+           tract = paste0(countycode, str_pad(CensusTract, 6, "left", "0")))
   # voterfile$countycode <- recode(voterfile$County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085")
   # voterfile$tract <- paste0(voterfile$countycode, str_pad(voterfile$CensusTract, 6, "left", "0"))
-  
+
   # voterfile <- voterfile %>% 
   #  mutate(countycode = recode(County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085"),
   #         tract = paste0(countycode, str_pad(CensusTract, 6, "left", "0")))
@@ -156,12 +160,12 @@ voterfile <- voterfile  %>%
   
 df_cutpoints <- list(
   white = quantile(matching_df$white, c(0,.2,.4,.6,.8,1)),
-  college = quantile(matching_df$college, c(0,.2,.4,.6,.8,1)),
+  #college = quantile(matching_df$college, c(0,.5,1)),
   medhhinc = quantile(matching_df$medhhinc, c(0,.2,.4,.6,.8,1))
 )
 
   
-  c.out <- matching_df %>% select(-VANID) %>% 
+  c.out <- matching_df %>% select(-VANID, -college) %>% 
     mutate_at(vars(starts_with("g_"), starts_with(("p_"))), as.factor) %>% 
     mutate(pp_2004 = as.factor(pp_2004),
            pp_2008 = as.factor(pp_2008),
@@ -256,10 +260,10 @@ df_cutpoints <- list(
     ## I think there are some nonsense ages in here and I need to investigate DoB coding more
     
     pb_long <- pb_long %>%  filter(year >= 2008)
-    cc
+    
     
     ## simple logit model with covariates ----------------------------------------
-    dist39_groups <- unique(pb$cem_group[pb$NYCCD ==39 | pb$pbdistrict == 39])
+    #dist39_groups <- unique(pb$cem_group[pb$NYCCD ==39 | pb$pbdistrict == 39])
     
     library(margins)
     covar_formula <- turned_out ~ pb + after_pb + as.factor(year) +  election_type  + Race + age + Sex + medhhinc #+ Sex commented out for new data - prefect prediction in Sex- not enough variation in all xtabs. Could make sex Binary and it would run
@@ -272,32 +276,100 @@ df_cutpoints <- list(
     ## Trying with lmer getting random effects for individuals
     library(lme4)
     
-    only39 <- pb_long %>% filter(cem_group %in% dist39_groups) %>% group_by() %>% 
-      mutate(turned_out = ifelse(is.na(turned_out), 0, turned_out),
-             VANID = as.factor(VANID), 
-             NYCCD = as.factor(NYCCD))
-    ggplot(only39) + geom_bar(aes(x = as.factor(turned_out), fill = election_type), stat = "count", position = "dodge") + facet_wrap(~year)
-    ggplot(only39) + geom_bar(aes(x = as.factor(turned_out), fill = as.factor(after_pb)), position = "dodge") + facet_wrap(~year)
+    # only39 <- pb_long %>% filter(cem_group %in% dist39_groups) %>% group_by() %>% 
+    #   mutate(turned_out = ifelse(is.na(turned_out), 0, turned_out),
+    #          VANID = as.factor(VANID), 
+    #          NYCCD = as.factor(NYCCD))
+    ggplot(pb_long) + geom_bar(aes(x = as.factor(turned_out), fill = election_type), stat = "count", position = "dodge") + facet_wrap(~year)
+    ggplot(pb_long) + geom_bar(aes(x = as.factor(turned_out), fill = as.factor(after_pb)), position = "dodge") + facet_wrap(~year)
     
-    bas_log <- glm(turned_out ~ pb + after_pb + as.factor(year) + election_type , data = only39)
+    bas_log <- glm(turned_out ~ pb + after_pb + as.factor(year) + election_type , data = pb_long)
+    
+## making FE dummies
+library(simcf)
+pb_long_orig <- pb_long
+
+pb_long <- pb_long_orig
+raceFE <- makeFEdummies(pb_long$Race) 
+colnames(raceFE) <- paste("race", colnames(raceFE), sep = "_")
+yearFE <- makeFEdummies(pb_long$year)
+colnames(yearFE) <- paste("year", colnames(yearFE), sep = "_")
+election_typeFE <- makeFEdummies(pb_long$election_type)
+colnames(election_typeFE) <- paste("election", colnames(election_typeFE), sep = "_")
+# pb_long <- pb_long %>% 
+  # select(-Race, -year, -election_type)
+pb_long <- bind_cols(pb_long, as.data.frame(raceFE), as.data.frame(yearFE), as.data.frame(election_typeFE))
+  # bind_cols(raceFE, yearFE, election_typeFE)
 logit_lme_f <- turned_out ~ pb + after_pb + as.factor(year) + election_type + (1 | VANID) 
-lme_logit <- glmer(logit_lme_f, data = only39, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
+lme_logit <- glmer(logit_lme_f, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 
 
-logit_full_fm <- turned_out ~ pb + after_pb + after_pb:Race + as.factor(year) + election_type + age + medhhinc + (1 | VANID)    
-lme_full <-  glmer(logit_full_fm, data = only39, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
+logit_full_fm <- turned_out ~ pb + after_pb*Race + as.factor(year) + election_type + age + medhhinc + white +  (1 | VANID) + (1|NYCCD)
+lme_full <-  glmer(logit_full_fm, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 AIC(lme_full)
 BIC(lme_full)
 AIC(lme_logit)
 BIC(lme_logit)
 
+# AIC(lme_full)
+# [1] 96998.3
+# > BIC(lme_full)
+# [1] 97194.14
+# 
+unconditioned <- glmer(turned_out ~ pb + after_pb + as.factor(year) + election_type + age + medhhinc + white +  (1 | VANID) + (1|NYCCD))
 #predicted turnout
-nd <- expand.grid(pb = 0, after_pb = c(0, 1), Race = c("W", "B", "H", "W", "A", "U"), 
-                  year = c(2016), election_type = "g")
-nd$preds <-  predict(lme_full, newdata = nd, se.fit = TRUE, type = "response", re.form = NA)
+nd <- expand.grid(pb = 0, after_pb = c(0, 1), Race = c("U", "A", "H", "B", "W"), 
+                  year = c(2016), election_type = "g", age = median(pb_long$age), medhhinc = median(pb_long$medhhinc), white = median(pb_long$white), stringsAsFactors = FALSE)
+nd$preds <-  predict(lme_full, newdata = nd, type = "response", re.form = NA)
+
+
+nd  %>%  
+  mutate(after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB")),
+         Race = factor(Race, levels = c("W", "B", "H", "A", "U"), labels = c("White", "Black", "Hispanic", "Asian", "Unknown"))) %>% 
+ggplot(aes(y = preds, x = Race)) + 
+  geom_segment(aes(xend = Race, y = 0, yend = preds, color = as.factor(after_pb)))+
+  geom_point(aes(color = as.factor(after_pb))) +
+  labs(title = "Predicted probability of voting in general election in 2016 \n before and after PB (in a non-PB district)", 
+       x = "", y = "Predicted probability of Voting", color = "") +
+  coord_flip() +
+  theme_minimal()
+
+######### 
+
+logit_full_fm_mi <- turned_out ~ pb + after_pbmedhhinc + Race + as.factor(year) + election_type + age + white +  (1 | VANID) + (1|NYCCD)
+lme_full_mi <-  glmer(logit_full_fm, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
+AIC(lme_full)
+BIC(lme_full)
+AIC(lme_logit)
+BIC(lme_logit)
+
+# AIC(lme_full)
+# [1] 96998.3
+# > BIC(lme_full)
+# [1] 97194.14
+# 
+# unconditioned <- glmer(turned_out ~ pb + after_pb + as.factor(year) + election_type + age + medhhinc + white +  (1 | VANID) + (1|NYCCD))
+#predicted turnout
+nd_mi <- expand.grid(pb = 0, after_pb = c(0, 1), Race = "B",
+                  year = c(2016), election_type = "g", age = median(pb_long$age), medhhinc = quantile(pb_long$medhhinc, probs = c(.1, .9)),
+                   white = median(pb_long$white), stringsAsFactors = FALSE)
+nd_mi$preds <-  predict(lme_full_mi, newdata = nd_mi, type = "response", re.form = NA)
+
+
+nd_mi  %>%  
+  mutate(after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB")),
+         medhhinc = factor(medhhinc)) %>% 
+  ggplot(aes(y = preds, x = medhhinc)) + 
+  #geom_segment(aes(xend = medhhinc, y = 0, yend = preds, color = as.factor(after_pb)))+
+  geom_point(aes(color = as.factor(after_pb))) +
+  labs(title = "Predicted probability of voting in general election in 2016 \n before and after PB (in a non-PB district)", 
+       x = "Median Census Tract HH Income", y = "Predicted probability of Voting", color = "") +
+  coord_flip() +
+  theme_minimal()
+
 
 ## poorer model fit. BUt huge effects from race (SE?).  Possibly because turnout is so much lower, and the logit kicks in more?
-only39 %>% mutate(turned_out = factor(turned_out, levels = c(0, 1), labels = c("Did not vote", "Voted")),
+pb_long %>% mutate(turned_out = factor(turned_out, levels = c(0, 1), labels = c("Did not vote", "Voted")),
                   after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB"))) %>% 
   ggplot() + geom_bar(aes(x = as.factor(year),  fill = turned_out), position = "fill") + 
   facet_grid(Race~after_pb, scales = "free") +coord_flip() + scale_y_continuous(labels = scales::percent) +
@@ -305,7 +377,7 @@ only39 %>% mutate(turned_out = factor(turned_out, levels = c(0, 1), labels = c("
 
 
 for (t in c("after_pb", "after_pb:RaceB", "after_pb:RaceH", "after_pb:RaceW", "after_pb:RaceA")){
-mean(dydx(head(only39), lme_full, t))
+mean(dydx(head(pb_long), lme_full, t))
 }
 
 newdat <-  expand.grid(pb = 0, after_pb = c(0, 1), year = c(2016), election_type = "g")
@@ -315,11 +387,11 @@ regressPredict <- function(df, form, newdat){
   return(newdat)
 }
 
-glmer_byRace <- only39 %>% 
+glmer_byRace <- pb_long %>% 
   group_by(Race) %>% 
   do(tidy(glmer(logit_lme_f, data = ., family = binomial(), nAGQ = 0)))
 
-glmer_predbyRace <- only39 %>% 
+glmer_predbyRace <- pb_long %>% 
   group_by(Race) %>% 
   do(regressPredict(df = ., form = logit_lme_f, newdat = newdat))
 

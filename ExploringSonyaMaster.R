@@ -7,8 +7,8 @@ library(margins)
 library(ggplot2)
 library(DBI)
 
-source("credentials.R") # loads the access credentials
-source("dbDownload.R")
+#source("credentials.R") # loads the access credentials
+#source("dbDownload.R")
 
 findDistrict <- function(ds){
   if(length(unique(na.omit(ds))) == 1) {return(unique(na.omit(ds)))} else

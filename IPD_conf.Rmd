@@ -11,27 +11,24 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ## Does participatory budgeting encourage turnout in regular elections?
 
-Participant surveys and anecdotes regularly suggest that Participatory Budgeting participation increases motivation to vote in ordinary elections.
+The work:
 
-This project is the first effort to systematically test these claims using individual voting behavior in NYC.
+1) Identify individual PB voters
+2) Compare their rates of voting, before and after PB, to similar people who did not have the option of voting in PB.
 
-The tasks (each with their own challenges): 
+## The work: Not so simple as it sounds
 
-1) get individual voter lists from implementing council districts 
-2) find individuals in the voter file on the basis of name, DOB, etc
-3) match PB voters to similar people in districts where PB was not implemented
-4) estimate the different probabilities of voting for similar people before and after PB participation
+image: ![]("SillyPicture.png")
 
-## Who could we find?
+## Did PB have an impact?
+!["effectPB.png"]("effectPB.png")
 
-% matched
-% race etc, voting behavior.
-% How many were matched to non-voters?
-
-*Include a plot*
+* Plot 1: All and split by race
 
 ## Did PB have an impact?
 
-* Plot 1: All and split by race
 * Plot 2: All and split by neighborhood wealth
+
+## Did PB have an impact?
+
 * Plot 3: All and split by age
