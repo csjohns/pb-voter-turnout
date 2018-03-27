@@ -287,6 +287,20 @@ df_cutpoints <- list(
     
 ## making FE dummies
 library(simcf)
+    
+    ## Replicating Chris Adolph's makeFEdummies, from simcf package (not on CRAN, available from http://faculty.washington.edu/cadolph/?page=60)
+    makeFEdummies <- function (unit, names = NULL) {
+      fe <- model.matrix(~factor(unit, levels = unique(as.character(unit))) - 1)
+      if (is.null(names)) {
+        colnames(fe) <- unique(as.character(unit))
+      }
+      else {
+        colnames(fe) <- names
+      }
+      fe
+    }
+    
+    
 pb_long_orig <- pb_long
 
 pb_long <- pb_long_orig
@@ -303,9 +317,24 @@ pb_long <- bind_cols(pb_long, as.data.frame(raceFE), as.data.frame(yearFE), as.d
 logit_lme_f <- turned_out ~ pb + after_pb + as.factor(year) + election_type + (1 | VANID) 
 lme_logit <- glmer(logit_lme_f, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 
+logit_lme_simcf <- turned_out ~ pb + after_pb + 
+  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 +
+  election_p + election_pp+ (1 | VANID) 
+lme_logit_simcf <- glmer(logit_lme_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
+
 
 logit_full_fm <- turned_out ~ pb + after_pb*Race + as.factor(year) + election_type + age + medhhinc + white +  (1 | VANID) + (1|NYCCD)
 lme_full <-  glmer(logit_full_fm, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
+
+
+########################### CODE FOR MODEL TO PREDICT VIA SIMCF ------------------------------------------------------------
+logit_full_simcf <- turned_out ~ pb + after_pb*race_B + after_pb*race_A + after_pb*race_H + after_pb*race_U +
+  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 +
+  election_p + election_pp + age + medhhinc + white + (1 | VANID) 
+lme_full_simcf <- glmer(logit_full_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
+#######################################################################################################################################
+
+
 AIC(lme_full)
 BIC(lme_full)
 AIC(lme_logit)
