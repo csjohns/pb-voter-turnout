@@ -28,13 +28,14 @@ pb <- vf_analysis %>%
   group_by(VANID) %>%
   mutate(DoB = ymd(DoB),
          totpb = sum(pb_2012, pb_2013, pb_2014, pb_2015 , pb_2016, na.rm = T)
-  )
+  ) %>% 
+  dplyr::select(-pp_2012, -p_2011)
 
 
 ### Reshaping long for regression -------------------------------------------------------------------------------------------------------------------------
 ## This is a multi-step process, creating the long pb votes, and the long regular votes separately, then joining.
 
-pb_long <- pb %>% filter(totpb >0) %>% select(VANID, totpb, starts_with("pb_")) %>% 
+pb_long <- pb %>% filter(totpb >0) %>% dplyr::select(VANID, totpb, starts_with("pb_")) %>% 
   gather( year, pb, starts_with("pb_")) %>%
   mutate(year = as.numeric(str_replace(year, "pb_", "")),
          pb = as.numeric(pb))
@@ -49,13 +50,13 @@ pb_long <- pb_long %>% group_by(VANID) %>%
   )
 summary(pb_long)
 
-elec_long <- pb %>% select(-starts_with("pb_")) %>%
+elec_long <- pb %>% dplyr::select(-starts_with("pb_")) %>%
   gather(election, turned_out, starts_with("p_2"), starts_with("g_2"), starts_with("pp_")) %>%
   separate(election, c("election_type", "year")) %>%
   mutate(#turned_out = ifelse(turned_out != "", 1, 0),
     year = as.numeric(year)) 
 
-pb_long <- pb_long %>% select(-pb) %>% full_join(elec_long)
+pb_long <- pb_long %>% dplyr::select(-pb) %>% full_join(elec_long)
 pb_long <- pb_long %>%
   mutate(pb = ifelse(is.na(pb), 0, pb),
          after_pb = as.numeric(year > pb_start),
@@ -77,15 +78,29 @@ ggplot(pb_long) + geom_bar(aes(x = as.factor(turned_out), fill = as.factor(after
 
 pb_long %>% mutate(turned_out = factor(turned_out, levels = c(0, 1), labels = c("Did not vote", "Voted")),
                    after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB"))) %>% 
+  filter(election_type == "g" & year == 2016)  %>% 
   ggplot() + geom_bar(aes(x = as.factor(year),  fill = turned_out), position = "fill") + 
-  facet_grid(Race~after_pb, scales = "free") +coord_flip() + scale_y_continuous(labels = scales::percent) +
-  labs(y="", x="") +theme_minimal()
+  facet_grid(Race~after_pb*pb, scales = "free") +coord_flip() + scale_y_continuous(labels = scales::percent) +
+  labs(y="", x="") +theme_minimal() + labs(title = "Turnout in general elections")
 
 
+p <- pb_long %>% mutate(turned_out = factor(turned_out, levels = c(0, 1), labels = c("Did not vote", "Voted")),
+                   after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB"))) %>% 
+  filter(election_type == "g")  %>% 
+  ggplot() + geom_bar(aes(x = as.factor(year),  fill = turned_out), position = "fill") + 
+  facet_grid(Race~after_pb*pb, scales = "free") 
+ggplotly(p)
+
+pb_long %>%
+  group_by(year, election_type,race, after_pb, pb) %>% 
+  summarize(nvoters = n(),
+            turnout = sum(turned_out, na.rm = T)/n()) %>% 
+  filter(year == 2016, election_type == "g")
 
 ## looking at a very basic linear regression predicting turnout
 bas_log <- lm(turned_out ~ pb + after_pb + as.factor(year) + election_type , data = pb_long)
 summary(bas_log)
+
 
 ## Quick comparison of linear and logit models with covariates - this is mostly just to give a sense of the relative magnitude of effects in the two model approaches
 library(margins)
@@ -150,6 +165,26 @@ BIC(lme_full)
 AIC(lme_logit)
 BIC(lme_logit)
 
+## explorign some basic predictions from thi
+#ind effects - confirming that they're not correlated with race
+inds <- ranef(lme_full)$VANID
+inds$VANID <- as.numeric(rownames(inds))
+inds <- inds %>% left_join(pb)
+by(inds, inds$race, function(x) mean(x[["(Intercept)"]]))
+by(inds, inds$pb, function(x) mean(x[["(Intercept)"]]))
+
+## this highlights that there is a structure to the random effects for districts that sees a bump up for pb districts and down for non-pb
+dists <- ranef(lme_full)$NYCCD
+dists$NYCCD <- as.numeric(rownames(dists))
+mean(dists[dists$NYCCD %in% pbdistricts, "(Intercept)"])
+mean(dists[! dists$NYCCD %in% pbdistricts, "(Intercept)"])
+
+
+preds <- predict(lme_full, type = "response")
+preds <- pb_long %>%  select(VANID, race, year, age, election_type, medhhinc, white, NYCCD, after_pb) %>% 
+  bind_cols(predvote = preds)
+by(preds, list(preds$race, preds$after_pb), function(x) mean(x[["predvote"]]))
+preds %>% group_by(race, after_pb, year) %>% summarize(predvote = mean(predvote)) %>% arrange(desc(year), race, after_pb) %>% View()
 
 # fitting model unconditioned by race - established as reference point, not actually referred to anywhere before
 unconditioned <- glmer(turned_out ~ pb + after_pb + as.factor(year) + election_type + age + medhhinc + white +  (1 | VANID) + (1|NYCCD)) 
@@ -215,9 +250,16 @@ logit_full_form <- turned_out ~ pb + after_pb*race_B + after_pb*race_A + after_p
 # fitting model
 lme_full_simcf <- glmer(logit_full_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 
-## creating simulated betas
+#identifying mean random effect for pb distrcts vs non pb districts
+dists <- ranef(lme_full_simcf)$NYCCD
+dists$NYCCD <- as.numeric(rownames(dists))
+pb_ranef <- mean(dists[dists$NYCCD %in% pbdistricts, "(Intercept)"])
+nopb_ranef <- mean(dists[! dists$NYCCD %in% pbdistricts, "(Intercept)"])
+
+## creating simulated betas for nonpb districts
 sims <- 1000
 pe <- fixef(lme_full_simcf)
+pe["(Intercept)"] <- pe["(Intercept)"] + nopb_ranef
 vc <- vcov(lme_full_simcf) 
 simbetas <- mvrnorm(sims, pe, vc)
 
@@ -278,6 +320,7 @@ preds %>% dplyr::select(after_pb, Race, pe, lower, upper) %>%
 ################ OLDER CODE EXPERIMENTING WITH SOLUTIONS THAT DIDN'T USE SIMCF FOR PREDICTIONS & PLOTTING.  -----------------------------
 ## Running separate regressions for each race, no pooling - limited in that predict does not produce confidence intervals 
 ## Partial pooling with simcf for CIs was preferable.
+library(broom)
 
 for (t in c("after_pb", "after_pb:RaceB", "after_pb:RaceH", "after_pb:RaceW", "after_pb:RaceA")){
   mean(dydx(head(pb_long), lme_full, t))
