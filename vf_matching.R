@@ -30,6 +30,10 @@ pb <- pb %>% select(-DWID) %>%
 pb <- pb %>% mutate(DoB = mdy(DoB),
                     pb = 1)
 
+# limit to only 23/39 and 2016 districts
+pbnyc <- read.csv(file = "pbnyc_district_votes.csv", as.is = TRUE)
+pb2016 <- pbnyc %>% filter(districtCycle == 1 & voteYear == 2016) 
+rm(pbnyc)
 
 ### Load full voterfile data ### -------------------------------------------------------------------------------------
 ### Limit it to only non-PB districts and VANIDS
@@ -39,7 +43,7 @@ load("pbdistricts.Rdata")
 pbdistricts <- na.omit(pbdistricts)
 
 ## loading full voter file
-voterfile <- fread("personfileFULL20170731-15112428081/personfileFULL20170731-15112428081.txt")
+voterfile <- fread("PersonFile20180426-11056504994/PersonFile20180426-11056504994.txt")
 
 ## filtering voterfile to only actual registered non-pb voters and 
 voterfile <- voterfile[!CityCouncilName %in% pbdistricts & !`Voter File VANID` %in% pb$VANID & !is.na(CityCouncilName) & RegistrationStatusName != "Applicant"]
@@ -47,14 +51,15 @@ voterfile <- voterfile[!CityCouncilName %in% pbdistricts & !`Voter File VANID` %
 ## Renaming/recoding to match with the pb table on the DB
 voterfile <- as.data.frame(voterfile)
 
+# renaming columns - modified 5/15 for the 2018 voterfile column name changes
 voterfile <- voterfile  %>%
   rename(Ethnicity = EthnicCatalistName,
          DoB = DOB,
          DoR = DateReg,
          RegStatus = RegistrationStatusName,
          County = CountyName,
-         #City = CityName,
-         Zip = Zip5,
+         City = CityName,
+         #Zip = Zip5,
          Lat = Latitude,
          Long = Longitude,
          NYCCD = CityCouncilName,
@@ -87,7 +92,7 @@ voterfile <- voterfile  %>%
   ## this code works by basically appending the voters from the districts of interest to the non-pb voterfile
   
   voterfile <- pb %>% 
-    filter(pbdistrict %in% c(23, 39)) %>% ## this is filtering to only districts we have full/near full data for
+    filter(pbdistrict %in% c(23, 39, pb2016$district)) %>% ## this is filtering to only districts we have full/near full data for
     bind_rows(voterfile)
     
   ## recoding vote tallies to a binary voted/not voted indicator
@@ -173,6 +178,7 @@ df_cutpoints <- list(
         verbose = 1) ### DON'T USE K2K - TOO MUCH MEMORY DEMAND. RANDOMLY DRAW FROM STRATA AFTER THE FACT
 
     c.out
+    #4707 matched, 2158 not = 69% match rate
     
 ### Creating the pairwise k2k match including one random sampled control for every pb voter  --------------------------------------------------------------------------------
     c.match <- data.frame(VANID = matching_df$VANID, pb = matching_df$pb, cem_group = c.out$strata, race =matching_df$Race)

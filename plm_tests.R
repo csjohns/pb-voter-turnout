@@ -42,12 +42,17 @@ pb_long <- pb_long %>%
   arrange(year) %>% 
   mutate(lag_turned_out = lag(turned_out))
 
-lme_lag <- glmer(turned_out ~ lag_turned_out + pb + after_pb*Race + election_type + age_at_vote + I(age_at_vote^2) + Sex + Race + 
-                   medhhinc + white + (1 | VANID) + (1|NYCCD), data = pb_long, family = binomial(), nAGQ = 0)
+lm_base <- lmer(turned_out ~ pb + after_pb*Race + election_type + age_at_vote + I(age_at_vote^2) + Sex + Race + 
+                   medhhinc + white + (1 | VANID) + (1|NYCCD), data = subset(pb_long, !is.na(lag_turned_out)))
+
+lme_lag <- lmer(turned_out ~ lag_turned_out + pb + after_pb*Race + election_type + age_at_vote + I(age_at_vote^2) + Sex + Race + 
+                   medhhinc + white + (1 | VANID) + (1|NYCCD), data = subset(pb_long, !is.na(lag_turned_out)))
 AIC(lme_lag)
-AIC(lme_district)
+AIC(lm_base)
+BIC(lme_lag)
+BIC(lm_base)
 summary(lme_lag)
-summary(lme_district)
+summary(lm_base)
 
 lme_lag_set <- pb_long %>% filter(!is.na(lag_turned_out)) %>% 
   glmer(turned_out ~ pb + after_pb*Race + election_type + age_at_vote + I(age_at_vote^2) + Sex + Race + 
