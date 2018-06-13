@@ -59,7 +59,7 @@ elec_long <- pb %>% dplyr::select(-starts_with("pb_")) %>%
 pb_long <- pb_long %>% dplyr::select(-pb) %>% full_join(elec_long)
 pb_long <- pb_long %>%
   mutate(pb = ifelse(is.na(pb), 0, pb),
-         after_pb = as.numeric(year > pb_start),
+         after_pb = as.numeric(year >= pb_start),
          after_pb = ifelse(is.na(after_pb), 0, after_pb),
          # repeater = totpb > 1, removing this because errors in 2014 means every early voter is a repeater, which isn't correct
          age_at_vote = year - year(DoB) )
@@ -67,6 +67,9 @@ pb_long <- pb_long %>%
 
 pb_long <- pb_long %>%  filter(year >= 2008)
 
+pb_long <- pb_long %>% 
+  group_by(cem_group, year, election_type) %>% 
+  mutate(post = max(after_pb))
 
 
 ####  Model explorations ---------------------------------------------------------------------------------------------------------------------------
@@ -78,10 +81,26 @@ ggplot(pb_long) + geom_bar(aes(x = as.factor(turned_out), fill = as.factor(after
 
 pb_long %>% mutate(turned_out = factor(turned_out, levels = c(0, 1), labels = c("Did not vote", "Voted")),
                    after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB"))) %>% 
+  filter(election_type == "g" & year == 2008)  %>% 
+  ggplot() + geom_bar(aes(x = as.factor(year),  fill = turned_out), position = "fill") + 
+  facet_grid(Race~after_pb*pb, scales = "free") +coord_flip() + scale_y_continuous(labels = scales::percent) +
+  labs(y="", x="") +theme_minimal() + labs(title = "Turnout in 2008 general election")
+
+
+pb_long %>% mutate(turned_out = factor(turned_out, levels = c(0, 1), labels = c("Did not vote", "Voted")),
+                   after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB"))) %>% 
   filter(election_type == "g" & year == 2016)  %>% 
   ggplot() + geom_bar(aes(x = as.factor(year),  fill = turned_out), position = "fill") + 
   facet_grid(Race~after_pb*pb, scales = "free") +coord_flip() + scale_y_continuous(labels = scales::percent) +
-  labs(y="", x="") +theme_minimal() + labs(title = "Turnout in general elections")
+  labs(y="", x="") +theme_minimal() + labs(title = "Turnout in 2016 general election")
+
+pb_long %>% mutate(turned_out = factor(turned_out, levels = c(0, 1), labels = c("Did not vote", "Voted")),
+                   after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB"))) %>% 
+  filter(election_type == "g" & year == 2012)  %>% 
+  ggplot() + geom_bar(aes(x = as.factor(year),  fill = turned_out), position = "fill") + 
+  facet_grid(Race~after_pb*pb, scales = "free") +coord_flip() + scale_y_continuous(labels = scales::percent) +
+  labs(y="", x="") +theme_minimal() + labs(title = "Turnout in 2012 general election")
+
 
 
 p <- pb_long %>% mutate(turned_out = factor(turned_out, levels = c(0, 1), labels = c("Did not vote", "Voted")),
