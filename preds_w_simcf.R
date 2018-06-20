@@ -28,19 +28,18 @@ colnames(election_typeFE) <- paste("election", colnames(election_typeFE), sep = 
 
 pb_long <- bind_cols(pb_long, as.data.frame(raceFE), as.data.frame(yearFE), as.data.frame(election_typeFE))
 
-
 ################################################################################################################################################
 ######################## AGGREGATE MODEL ------------------------------------------------------------------------------------
 ### Estimated model
 logit_base_simcf <- turned_out ~ pb + after_pb + race_B + race_A + race_H + race_U +
   year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 +
-  election_p + election_pp + age_at_vote + medhhinc + white + (1 | VANID) + (1 | NYCCD)
+  election_p + election_pp + age + I(age_at_vote < 18) + medhhinc + white + (1 | VANID) + (1 | NYCCD)
 lme_base_simcf <- glmer(logit_base_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 #######################################################################################################################################
 ### Formula for simcf
 logit_base_form <-  turned_out ~ pb + after_pb + race_B + race_A + race_H + race_U +
   year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 +
-election_p + election_pp + age_at_vote + medhhinc + white
+  election_p + election_pp + age + I(age_at_vote < 18) + medhhinc + white
 
 library(MASS)
 
@@ -129,7 +128,7 @@ logit_full_simcf <- turned_out ~ pb + pb*race_B + pb*race_A + pb*race_H + pb*rac
   year_2014*race_B + year_2014*race_A + year_2014*race_H + year_2014*race_U +
   year_2015*race_B + year_2015*race_A + year_2015*race_H + year_2015*race_U +
   year_2016*race_B + year_2016*race_A + year_2016*race_H + year_2016*race_U +
-  election_p + election_pp + age + medhhinc + white + (1 | VANID) + (1 | NYCCD)
+  election_p + election_pp + age + I(age_at_vote < 18) + medhhinc + white + (1 | VANID) + (1 | NYCCD)
 lme_full_simcf <- glmer(logit_full_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 
 
@@ -146,7 +145,7 @@ logit_full_form <- logit_full_simcf <- turned_out ~ pb + pb*race_B + pb*race_A +
   year_2014*race_B + year_2014*race_A + year_2014*race_H + year_2014*race_U +
   year_2015*race_B + year_2015*race_A + year_2015*race_H + year_2015*race_U +
   year_2016*race_B + year_2016*race_A + year_2016*race_H + year_2016*race_U +
-  election_p + election_pp + age + medhhinc + white
+  election_p + election_pp + age + I(age_at_vote < 18) +medhhinc + white
 
 library(MASS)
 
@@ -225,13 +224,13 @@ ggsave("Paper/Figs/fd_byrace.pdf", width = 5, height = 4)
 pb_long <- pb_long %>% mutate(youth = ifelse(age <= 25, 1, 0))
 logit_full_simcf <- turned_out ~ pb + after_pb*youth + race_B + race_A + race_H + race_U +
   year_2009*youth + year_2010*youth + year_2011*youth + year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth +
-  election_p + election_pp + age_at_vote + medhhinc + white + (1 | VANID) + (1 | NYCCD)
+  election_p + election_pp + age + I(age_at_vote < 18) + medhhinc + white + (1 | VANID) + (1 | NYCCD)
 lme_full_simcf <- glmer(logit_full_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 #######################################################################################################################################
 ### Formula for simcf
 logit_full_form <-  turned_out ~ pb + after_pb*youth + race_B + race_A + race_H + race_U +
   year_2009*youth + year_2010*youth + year_2011*youth + year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth +
-  election_p + election_pp + age_at_vote + medhhinc + white
+  election_p + election_pp + age + I(age_at_vote < 18) + medhhinc + white
 
 sims <- 1000
 pe <- fixef(lme_full_simcf)
@@ -293,24 +292,24 @@ ggsave("Paper/Figs/byyouth.pdf", width = 5, height = 4)
 ######################## DISAGGREGATE BY Youth - ONLY 18+ ---------------------
 # See scratchpad - reran these models for only elections 2011 on, this made the differential effect for youth disappear.  Suspicion that the fact that youth didn't vote in 2008 may be driving the apparent greater impact of PB
 ### Estimated model
-pb_long <- pb_long %>% filter(age_at_vote >= 18)
+pb_long_18p <- pb_long %>% mutate(youth = ifelse(age <= 29, 1, 0)) %>%  filter(age_at_vote >= 18)
 logit_full_simcf <- turned_out ~ pb + after_pb*youth + race_B + race_A + race_H + race_U +
-  year_2009 + year_2010 + year_2011 + year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth +
-  election_p + election_pp + age_at_vote + medhhinc + white + (1 | VANID) + (1 | NYCCD)
-lme_full_simcf <- glmer(logit_full_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
+  year_2009*youth + year_2010*youth + year_2011*youth + year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth +
+  election_p + election_pp + age + medhhinc + white + (1 | VANID) + (1 | NYCCD)
+lme_full_simcf <- glmer(logit_full_simcf, data = pb_long_18p, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 #######################################################################################################################################
 ### Formula for simcf
 logit_full_form <-  turned_out ~ pb + after_pb*youth + race_B + race_A + race_H + race_U +
   year_2009 + year_2010 + year_2011 + year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth +
-  election_p + election_pp + age_at_vote + medhhinc + white
+  election_p + election_pp + age + medhhinc + white
 
 sims <- 1000
 pe <- fixef(lme_full_simcf)
 vc <- vcov(lme_full_simcf) 
 simbetas <- mvrnorm(sims, pe, vc)
 
-nscen <- length(unique(pb_long$youth))*2
-xhyp <- cfMake(logit_full_form, pb_long, nscen = nscen, f = "mean")
+nscen <- length(unique(pb_long_18p$youth))*2
+xhyp <- cfMake(logit_full_form, pb_long_18p, nscen = nscen, f = "mean")
 
 simyear <- "2016"
 
@@ -369,13 +368,13 @@ ggsave("Paper/Figs/byyouth.pdf", width = 5, height = 4)
 
 logit_full_simcf <- turned_out ~ pb + after_pb*Sex + race_B + race_A + race_H + race_U +
   year_2009*Sex + year_2010*Sex + year_2011*Sex + year_2012*Sex + year_2013*Sex + year_2014*Sex + year_2015*Sex + year_2016*Sex +
-  election_p + election_pp + age + medhhinc + white + (1 | VANID) + (1 | NYCCD)
+  election_p + election_pp + age + I(age_at_vote < 18) + medhhinc + white + (1 | VANID) + (1 | NYCCD)
 lme_full_simcf <- glmer(logit_full_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 #######################################################################################################################################
 ### Formula for simcf
 logit_full_form <-  turned_out ~ pb + after_pb*Sex + race_B + race_A + race_H + race_U +
   year_2009*Sex + year_2010*Sex + year_2011*Sex + year_2012*Sex + year_2013*Sex + year_2014*Sex + year_2015*Sex + year_2016*Sex +
-  election_p + election_pp + age + medhhinc + white
+  election_p + election_pp + age + I(age_at_vote < 18) + medhhinc + white
 
 sims <- 1000
 pe <- fixef(lme_full_simcf)
@@ -440,13 +439,13 @@ ggsave("Paper/Figs/bygender.pdf", width = 5, height = 4)
 pb_long <- pb_long %>% mutate(wealthy = as.numeric(medhhinc > quantile(medhhinc, probs = .5)))
 logit_full_simcf <- turned_out ~ pb + after_pb*wealthy + race_B + race_A + race_H + race_U +
   year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 +
-  election_p + election_pp + age +  white + (1 | VANID) + (1 | NYCCD)
+  election_p + election_pp + age + I(age_at_vote < 18) + white + (1 | VANID) + (1 | NYCCD)
 lme_full_simcf <- glmer(logit_full_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 #######################################################################################################################################
 ### Formula for simcf
 logit_full_form <-  turned_out ~ pb + after_pb*wealthy + race_B + race_A + race_H + race_U +
   year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 +
-  election_p + election_pp + age + white
+  election_p + election_pp + age + I(age_at_vote < 18) + white
 
 sims <- 1000
 pe <- fixef(lme_full_simcf)
@@ -479,10 +478,10 @@ for (i in 1:(nscen/2)){
 }
 
 for (i in c(1,3)){
-  xhyp <- cfChange(xhyp, "Wealthy area", x = 1, xpre = 1, scen = i)
+  xhyp <- cfChange(xhyp, "wealthy", x = 1, xpre = 1, scen = i)
 }
 for (i in c(2,4)){
-  xhyp <- cfChange(xhyp, "Not wealthy area", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "wealthy", x = 0, xpre = 0, scen = i)
 }
 
 yhyp <- logitsimev(xhyp, simbetas)
@@ -491,14 +490,14 @@ yhyp_fd <- logitsimfd(xhyp, simbetas)
 
 preds <-  cbind(xhyp$x, as.data.frame(yhyp))
 
-preds %>% dplyr::select(after_pb, Sex, pe, lower, upper) %>% 
+preds %>% dplyr::select(after_pb, wealthy, pe, lower, upper) %>% 
   mutate(after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB")),
          wealthy = factor(wealthy, levels = c(1, 0), labels = c("Wealthy area", "Not wealthy area"))) %>% 
-  ggplot(aes(y = pe, ymin = lower, ymax = upper, x = youth)) + 
+  ggplot(aes(y = pe, ymin = lower, ymax = upper, x = wealthy)) + 
   # geom_segment(aes(xend = Race, y = 0, yend = preds, color = as.factor(after_pb)))+
   geom_pointrange(aes(color = as.factor(after_pb))) +
   labs(title = paste0("By age: predicted probability of voting in general election in ", simyear, "\n before and after PB (in a non-PB district)"), 
        x = "", y = "Predicted probability of Voting", color = "") +
   coord_flip() +
   theme_minimal()
-ggsave("Paper/Figs/bygender.pdf", width = 5, height = 4)
+ggsave("Paper/Figs/byeduc.pdf", width = 5, height = 4)
