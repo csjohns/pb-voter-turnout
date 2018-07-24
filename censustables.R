@@ -31,8 +31,18 @@ race <- race %>%
          latinx = Hispanic.or.Latino.by.Race..Hispanic.or.Latino./Hispanic.or.Latino.by.Race..Total.,
          mixed = Hispanic.or.Latino.by.Race..Not.Hispanic.or.Latino..Two.or.more.races./Hispanic.or.Latino.by.Race..Total.,
          other = Hispanic.or.Latino.by.Race..Not.Hispanic.or.Latino..Some.other.race.alone/Hispanic.or.Latino.by.Race..Total.)
+# experimenting with finding majority group in tract
+# race_long <- race %>% 
+#   filter(!is.na(white)) %>% 
+#   group_by(tract) %>% 
+#   gather(key = race_group, value = percent, -tract) 
+#  maj_race <-  race_long %>%  group_by(tract) %>% 
+#   filter(percent == max(percent, na.rm = T)) %>% nrow
+#    sample_n(1)
+#    
+# tied_tract <- maj_race %>% group_by(tract) %>% tally %>% filter(n > 1) 
 
-
+ 
 ## MED HH INCOME
 B19013 <- acs.fetch(endyear = 2015,  geography = geo,
                     table.number = "B19013", col.names = "pretty", case.sensitive = F)
