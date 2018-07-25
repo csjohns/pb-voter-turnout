@@ -23,7 +23,7 @@ results_orig <- dbGetQuery(con, "
 select * from scraped_BOE 
 where electionmonth IN (4,9,11)
 and candidate NOT IN ('Absentee/Military', 'Emergency', 'Scattered', 'Yes', 'No', 'Absentee')
-and office IN ('President', 'CD', 'SD', 'AD', 'US Senate', 'Governor', 'Lieutenant Governor', 'Mayor', 'Member of the City Council')
+and office IN ('President', 'CD', 'SD', 'AD', 'US Senate', 'Governor', 'Mayor', 'Member of the City Council')
                       ")
 # source("credentials.R") # loads the access credentials
 # results <- results_orig <-  dbDownload(table = "electionresults", username = username, password = password, dbname = db.name, host = hostname, port = port)
@@ -48,7 +48,14 @@ max_race <- results %>% group_by(ED, ElectionYear, ElectionMonth, ElectionDay, O
   mutate(ed_totvotes = sum(VoteCount, na.rm = TRUE)) %>%
   group_by(ED, ElectionYear, ElectionMonth, ElectionDay) %>% # filter(ED == "Ad 23 - Ed 001") %>% View
   mutate(max_vote = as.numeric(ed_totvotes == max(ed_totvotes))) %>% 
-  select(-VoteCount, -Party) %>% distinct
+  filter(max_vote == 1) %>% 
+  mutate(Office = ordered(Office, levels = c("President", "Governor", "US Senate", "CD", "SD", "AD", "Member of the City Council"))) %>% 
+  filter(Office == min(Office)) %>% 
+  mutate(Office = as.character(Office)) %>% 
+  select(-VoteCount, -Party) %>% 
+  distinct()
+
+
 
 
 ########################################################################################################################
@@ -56,7 +63,7 @@ max_race <- results %>% group_by(ED, ElectionYear, ElectionMonth, ElectionDay, O
 ##    Margins of victory are calculated at the race-district level, so a generally competitive race 
 ##    will be considered competetive even if everyone in teh neighborhood votes the same way
 
-compet <- max_race %>% 
+compet <- results %>% 
   group_by(DistrictNumber, ElectionYear, ElectionMonth, ElectionDay, Office) %>% 
   mutate(dist_totvotes = sum(VoteCount, na.rm = TRUE)) %>% 
   group_by(DistrictNumber, ElectionYear, ElectionMonth, ElectionDay, Office, Candidate) %>%
@@ -65,7 +72,7 @@ compet <- max_race %>%
             n_ballot_lines = n()) %>% 
   mutate(vote_pct = dist_cand_votes/dist_totvotes) %>% # head(30) %>% View
   group_by() %>% 
-  left_join(max_race %>% select(-VoteCount, -Party) %>% distinct, .) %>% #filter(ElectionYear == 2016) %>% arrange(ED, ElectionMonth, Office) %>%  head(100) %>% View
+  left_join(max_race, .) %>% #filter(ElectionYear == 2016) %>% arrange(ED, ElectionMonth, Office) %>%  head(100) %>% View
   filter(max_vote == 1) %>% #head(30) %>% View
   group_by(ED, ElectionYear, ElectionMonth, ElectionDay, Office) %>%
   arrange(ED, ElectionYear, ElectionMonth, ElectionDay, Office, desc(dist_cand_votes)) %>% 
@@ -83,7 +90,30 @@ ggplot(compet) +
   geom_point(aes(x = vote_diff_pct, y = vote_diff_cum_pct, color = vote_diff_pct)) + 
   geom_abline(slope = 1, intercept = 0) +
   facet_wrap(~Office)
+
+## recoding compet to identify election type and year, spread toseparate columns
+compet_wide <- compet %>% 
+  group_by() %>% 
+  mutate(election_type = case_when(ElectionMonth == 11 ~ "g",
+                                  ElectionMonth == 4 ~ "pp",
+                                  ElectionMonth == 9 ~"p")) %>% 
+  select(-ElectionMonth, -ElectionDay) %>% 
+  unite(election, election_type, ElectionYear) %>% 
+  select(ED, County, election, vote_diff_pct) %>% 
+  spread(election, vote_diff_pct) %>% 
+  distinct()
   
+sapply(compet_wide, function(x)sum(!is.na(x))/length(x))
+## this points to having near full info for g_2014, g_2016, p_2014 & pp_2016
+
+compet_select <- select(compet_wide, -g_2015, -p_2015, -p_2016) %>% 
+  rename_at(vars(-ED, -County), paste0, sep = "_", "comp" ) 
+
+library(classInt)
+breaks <- lapply(compet_select[,3:6], function(x)classIntervals(x, n= 3, style = "jenks")$brks) 
+comp_breaks <- as.data.frame(breaks)
+
+save(compet_select, comp_breaks, file = "compet.Rdata")
 ### For Reference: Old code doing all competitiveness scores by ED---------------------------------------------------
   
   ########################################################################################################################
