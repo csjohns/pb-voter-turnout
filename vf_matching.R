@@ -29,7 +29,8 @@ rm(password, username, hostname, db.name, port) # if you want to remove the cred
 #pb <- pb_orig 
 #rm(pb_orig)
 pb <- pb %>% select(-DWID) %>% 
-  filter(DoR != "" & !is.na(DoR))
+  filter(DoR != "" & !is.na(DoR)) %>% 
+  mutate_at(vars(starts_with("pb_2")), replace_na, 0) # this line is to deal with the fact taht the row appended dist 23 voters (who didn't otherwise exist)
 pb <- pb %>% mutate(DoB = conv19c(DoB),
                     pb = 1)
 
@@ -177,10 +178,10 @@ df_cutpoints <- list(
   white = quantile(matching_df$white, c(0,.2,.4,.6,.8,1)),
   #college = quantile(matching_df$college, c(0,.5,1)),
   medhhinc = quantile(matching_df$medhhinc, c(0,.2,.4,.6,.8,1))
-  , comp_g_2014 = comp_breaks$g_2014_comp,
-  comp_g_2016 = comp_breaks$g_2016_comp,
-  comp_p_2014 = comp_breaks$p_2014_comp,
-  comp_pp_2016 = comp_breaks$pp_2016_comp
+  , comp_g_2014 = quantile(compet_select$g_2014_comp, probs = c(0, .25, .75, 1), na.rm = TRUE),
+  comp_g_2016 = quantile(compet_select$g_2016_comp, probs = c(0, .25, .75, 1), na.rm = TRUE),
+  comp_p_2014 = quantile(compet_select$p_2014_comp, probs = c(0, .25, .75, 1), na.rm = TRUE),
+  comp_pp_2016 = quantile(compet_select$pp_2016_comp, probs = c(0, .25, .75, 1), na.rm = TRUE)
 )
 
   
@@ -198,7 +199,7 @@ df_cutpoints <- list(
         verbose = 1) ### DON'T USE K2K - TOO MUCH MEMORY DEMAND. RANDOMLY DRAW FROM STRATA AFTER THE FACT
 
     c.out
-    #4707 matched, 2158 not = 69% match rate
+    #4707 matched, 2158 not = 69% match rate -- matching on outer, inner quantile splits == 6330/6204 (59%)
     
 ### Creating the pairwise k2k match including one random sampled control for every pb voter  --------------------------------------------------------------------------------
     c.match <- data.frame(VANID = matching_df$VANID, pb = matching_df$pb, cem_group = c.out$strata, race =matching_df$Race)
@@ -229,7 +230,7 @@ df_cutpoints <- list(
       bind_rows(c.control)
     
 ### creating analysis DF by joining voterfile to the CEM match output - effectively returns voterfile info filtered to matched dataset -----
-    vf_analysis <- c.match %>% select(-n_treat, -n_control) %>% 
+    vf_analysis <- c.match %>% dplyr::select(-n_treat, -n_control) %>% 
       left_join(voterfile) %>% 
       rename(comp_g_2016 = g_2016_comp, comp_g_2014 = g_2014_comp, comp_p_2014 = p_2014_comp, comp_pp_2016 = pp_2016_comp) 
     
@@ -240,6 +241,6 @@ df_cutpoints <- list(
     gc()
 
 #### Saving matched datafile as R object for future use  --------------------------------------------------------------------------------
-save(vf_analysis, file = "vf_analysis.Rdata")
+save(vf_analysis, c.match.jenks, c.match.jenks3, file = "vf_analysis.Rdata")
 
     

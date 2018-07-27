@@ -21,7 +21,7 @@ library(MASS)
 
 ####  replicating transformation and first regressions with the matched data -------------------------------------------------------------------------------------
 
-load("vf_analysis.Rdata")    
+ load("vf_analysis.Rdata")    
 # Dealing with DoB, calculating total PB votes (note that these will usually be off by 1 because 2014 has too many voters (everyone who came before))
 
 pb <- vf_analysis %>% 
@@ -34,21 +34,7 @@ pb <- vf_analysis %>%
 
 ### Reshaping long for regression -------------------------------------------------------------------------------------------------------------------------
 ## This is a multi-step process, creating the long pb votes, and the long regular votes separately, then joining.
-
-pb_long <- pb %>% filter(totpb >0) %>% dplyr::select(VANID, totpb, starts_with("pb_")) %>% 
-  gather( year, pb, starts_with("pb_")) %>%
-  mutate(year = as.numeric(str_replace(year, "pb_", "")),
-         pb = as.numeric(pb))
-glimpse(pb_long)
-summary(pb_long)
-
-# this code calculates pb start year - not that this code is good even though 2014 is a wacky error year since voters who didn't vote before 2014 will indeed have their start year be 2014
-pb_long <- pb_long %>% group_by(VANID) %>%
-  arrange(VANID, year) %>%
-  mutate(pbyear  = ifelse(pb == 1, year, NA),
-         pb_start = min(pbyear, na.rm = TRUE)
-  )
-summary(pb_long)
+## SOMETHING WEIRD IS HAPPENING HERE WITH THE ADDITION OF 2017 - INVESTIGATE!!!
 
 elec_long <- pb %>% dplyr::select(-starts_with("pb_")) %>%
   gather(election, turned_out, starts_with("p_2"), starts_with("g_2"), starts_with("pp_")) %>%
@@ -56,8 +42,28 @@ elec_long <- pb %>% dplyr::select(-starts_with("pb_")) %>%
   mutate(#turned_out = ifelse(turned_out != "", 1, 0),
     year = as.numeric(year)) 
 
-pb_long <- pb_long %>% dplyr::select(-pb) %>% full_join(elec_long)
+pb_long <- pb %>% filter(pb == 1) %>% dplyr::select(VANID, totpb, starts_with("pb_")) %>% 
+  gather( year, pb, starts_with("pb_")) %>% 
+  mutate(year = as.numeric(str_replace(year, "pb_", "")),
+         pb = as.numeric(pb)) %>% 
+  full_join(filter(elec_long, pb == 1) %>% dplyr::select(VANID, year, totpb) %>% distinct())
+glimpse(pb_long)
+summary(pb_long)
+
+# this code calculates pb start year - not that this code is good even though 2014 is a wacky error year since voters who didn't vote before 2014 will indeed have their start year be 2014
+pb_long <- pb_long %>% group_by(VANID) %>%
+  arrange(VANID, year) %>%
+  mutate(pbyear  = ifelse(pb == 1, year, NA),
+         pb_start = min(pbyear, na.rm = TRUE),
+         pb_start = ifelse(pb_start == Inf, NA, pb_start)
+  )
+summary(pb_long)
+
+pb_long <- pb_long %>% dplyr::select(-pb) %>% full_join(elec_long) 
 pb_long <- pb_long %>%
+  group_by(VANID) %>% 
+  #mutate(pb_start_group = min(pb_start, na.rm = TRUE)) %>% filter(pb == 1 & year %in% c(2016,2017)) %>% arrange(VANID, year) %>% View
+  group_by() %>% 
   mutate(pb = ifelse(is.na(pb), 0, pb),
          after_pb = as.numeric(year >= pb_start),
          after_pb = ifelse(is.na(after_pb), 0, after_pb),
