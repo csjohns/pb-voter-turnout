@@ -8,7 +8,7 @@ voterfile <- fread("PersonFile20180426-11056504994.txt")
 pbdistricts <- c(3, 5, 6, 7, 8, 10, 11, 12, 15, 16, 17, 19, 20, 21, 22, 23, 24, 26, 27, 29, 30,
                 31, 32, 33, 34, 35, 36, 38, 39, 40, 41, 44, 45, 47, 49)
 
-pbsampledists <- c(39, 23, 30, 35, 36, 40)
+pbsampledists <- c(39, 23, 30, 35, 36, 40, "NYC")
 
 # Retain only "Registered Active" and "Registered Inactive"
 voterfile <- voterfile[RegistrationStatusName == "Registered Active" | RegistrationStatusName == "Registered Inactive"]
@@ -47,12 +47,27 @@ voterfile <- voterfile %>%
   mutate_at(vars(starts_with("g_")), funs(convLogicVote)) %>% 
   mutate_at(vars(starts_with("pp_")), funs(convLogicVote)) 
 
+# Add age
 voterfile <- voterfile %>% 
-    mutate(age = year(Sys.Date()) - year(DoB)) %>% 
+  mutate(age = year(Sys.Date()) - year(DoB))
+
+# Merge in census tract data
+source("censustables.R")
+
+census <- race %>% 
+  left_join(inc, by = "tract") %>% 
+  left_join(educ, by = "tract")
+
+voterfile <- voterfile %>% mutate(countycode = recode(County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085")) %>%
+  mutate(countycode = ifelse(countycode %in% c("005", "047", "061", "081", "085"), countycode, NA),
+         tract = paste0(countycode, str_pad(CensusTract, 6, "left", "0")))
+
+voterfile <- voterfile %>% 
+  left_join(census, by = "tract") %>% 
   as.data.table()
 
 # Total registered voters == 4,946,176
-voterfile <- as.data.table(voterfile)
+
 
 
 #### Turnout Registered Voters ####
@@ -181,19 +196,34 @@ p_turnout <- ggplot(subset(turnout, Area %in% pbsampledists & Office != "Off Yea
 
 #### Demographics #####
 
-source("censustables.R")
+## Age
 
-census <- race %>% 
-  left_join(inc, by = "tract") %>% 
-  left_join(educ, by = "tract")
+p_age <- ggplot(subset(voterfile, NYCCD %in% pbsampledists), 
+                aes(x = age, group = NYCCD)) +
+  geom_histogram(bins = 15) +
+  facet_grid(NYCCD ~ .) +
+  labs(x = "Age",
+       y = "Individuals",
+       title = " ") +
+  ylim(0, 35000) +
+  theme_minimal() +
+  theme(strip.text.y = element_blank())
 
-voterfile <- voterfile %>% mutate(countycode = recode(County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085")) %>%
-  mutate(countycode = ifelse(countycode %in% c("005", "047", "061", "081", "085"), countycode, NA),
-         tract = paste0(countycode, str_pad(CensusTract, 6, "left", "0")))
+## College degree
 
-voterfile <- voterfile %>% 
-  left_join(census, by = "tract")
+p_college <- ggplot(subset(voterfile, NYCCD %in% pbsampledists), 
+                    aes(x = college/100, group = NYCCD)) +
+  geom_histogram(bins = 15) +
+  facet_grid(NYCCD ~ .) +
+  labs(x = "College degree, tract (%)",
+       y = "",
+       title = " ") +
+  ylim(0, 35000) +
+  theme_minimal() +
+  theme(strip.text.y = element_blank(),
+        axis.text.y = element_blank())
 
+## Household Income
 
 p_hhinc <- ggplot(subset(voterfile, NYCCD %in% pbsampledists), 
                               aes(x = medhhinc, group = NYCCD)) +
@@ -208,32 +238,11 @@ p_hhinc <- ggplot(subset(voterfile, NYCCD %in% pbsampledists),
         axis.text.y = element_blank(),
         plot.margin = margin(r = 0.1, l = 0.1, t = 0.1, b = 0.1))
 
-p_college <- ggplot(subset(voterfile, NYCCD %in% pbsampledists), 
-                 aes(x = college/100, group = NYCCD)) +
-  geom_histogram(bins = 15) +
-  facet_grid(NYCCD ~ .) +
-  labs(x = "College degree, tract (%)",
-       y = "",
-       title = " ") +
-  ylim(0, 35000) +
-  theme_minimal() +
-  theme(strip.text.y = element_blank(),
-        axis.text.y = element_blank())
-
-p_age <- ggplot(subset(voterfile, NYCCD %in% pbsampledists), 
-                    aes(x = age, group = NYCCD)) +
-  geom_histogram(bins = 15) +
-  facet_grid(NYCCD ~ .) +
-  labs(x = "Age",
-       y = "Individuals",
-       title = " ") +
-  ylim(0, 35000) +
-  theme_minimal() +
-  theme(strip.text.y = element_blank())
+## Race
 
 p_race <- voterfile %>% 
   filter(NYCCD %in% pbsampledists) %>% 
-  filter(!Race %in% c("N", "U")) %>% 
+  filter(Race != "N") %>% 
   ggplot(aes(x = Race, group = NYCCD)) +
   geom_bar() +
   facet_grid(NYCCD ~ .) +
@@ -241,7 +250,7 @@ p_race <- voterfile %>%
        y = "",
        title = " ") +
   ylim(0, 35000) +
-  scale_x_discrete(labels = c("A" = "Asian", "B" = "Black", "H" = "Hispanic", "W" = "White")) +
+  scale_x_discrete(labels = c("A" = "Asian", "B" = "Black", "H" = "Hispanic", "U" = "Unknown", "W" = "White")) +
   theme_minimal() +
   theme(strip.text.y = element_blank(),
         axis.text.y = element_blank())
@@ -253,22 +262,3 @@ p <- ggarrange(plotlist = list(p_age, p_college, p_race, p_hhinc, p_turnout),
                nrow = 1, ncol = 5,
                widths = c(.8, .8, .8, .8, 1.4))
 ggsave(file = "descriptives.png", p, width = 12, height = 8)
-p
-turnout <- voterfile %>% 
-  group_by(NYCCD) %>% 
-  summarize(tot = n(),
-            turnout = )
-  ?unit
-## PB v. Non-PB districts
-
-
-
-# increase district presidential elections
-
-test <- voterfile %>%
-  split(.$NYCCD)%>%
-  mutate(desc = map(summary))
-
-test1 <- test %>% 
-  unnest()
-test$`1`
