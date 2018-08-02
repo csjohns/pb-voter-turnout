@@ -31,6 +31,11 @@ race <- race %>%
          latinx = Hispanic.or.Latino.by.Race..Hispanic.or.Latino./Hispanic.or.Latino.by.Race..Total.,
          mixed = Hispanic.or.Latino.by.Race..Not.Hispanic.or.Latino..Two.or.more.races./Hispanic.or.Latino.by.Race..Total.,
          other = Hispanic.or.Latino.by.Race..Not.Hispanic.or.Latino..Some.other.race.alone/Hispanic.or.Latino.by.Race..Total.)
+
+# Find majority race of census tract
+racea <- race[,2:8]
+race$majority <- colnames(racea)[max.col(racea,ties.method="first")]
+
 # experimenting with finding majority group in tract
 # race_long <- race %>% 
 #   filter(!is.na(white)) %>% 
