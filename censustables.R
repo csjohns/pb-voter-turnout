@@ -24,7 +24,7 @@ race <- data.frame(
 
 race <- race %>% 
   transmute(tract = tract,
-         white = Hispanic.or.Latino.by.Race..Not.Hispanic.or.Latino./Hispanic.or.Latino.by.Race..Total.,
+         white = Hispanic.or.Latino.by.Race..Not.Hispanic.or.Latino..White.alone/Hispanic.or.Latino.by.Race..Total.,
          black = Hispanic.or.Latino.by.Race..Not.Hispanic.or.Latino..Black.or.African.American.alone/Hispanic.or.Latino.by.Race..Total.,
          asian = Hispanic.or.Latino.by.Race..Not.Hispanic.or.Latino..Asian.alone/Hispanic.or.Latino.by.Race..Total.,
          pacislander = Hispanic.or.Latino.by.Race..Not.Hispanic.or.Latino..Native.Hawaiian.and.Other.Pacific.Islander.alone/Hispanic.or.Latino.by.Race..Total.,
