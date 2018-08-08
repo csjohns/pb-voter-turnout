@@ -129,6 +129,10 @@ voterfile <- voterfile  %>%
     left_join(inc) %>% 
     left_join(race)
   
+  ## Add indicator for if voter's race matches majority race of tract
+  voterfile <- voterfile %>% 
+    mutate(majmatch = Race == majority)
+  
 ### Including competitiveness ----------------------------------------------------------------------
 load("compet.Rdata")  
 
