@@ -36,6 +36,9 @@ race <- race %>%
 racea <- race[,2:8]
 race$majority <- colnames(racea)[max.col(racea,ties.method="first")]
 
+race$majority <- recode(race$majority, 
+                         asian = "A", black = "B", latinx = "H", white = "W", other = NA_character_)
+  
 # experimenting with finding majority group in tract
 # race_long <- race %>% 
 #   filter(!is.na(white)) %>% 
