@@ -34,7 +34,6 @@ pb <- vf_analysis %>%
 
 ### Reshaping long for regression -------------------------------------------------------------------------------------------------------------------------
 ## This is a multi-step process, creating the long pb votes, and the long regular votes separately, then joining.
-## SOMETHING WEIRD IS HAPPENING HERE WITH THE ADDITION OF 2017 - INVESTIGATE!!!
 
 elec_long <- pb %>% dplyr::select(-starts_with("pb_")) %>%
   gather(election, turned_out, starts_with("p_2"), starts_with("g_2"), starts_with("pp_")) %>%
@@ -68,7 +67,8 @@ pb_long <- pb_long %>%
          after_pb = as.numeric(year >= pb_start),
          after_pb = ifelse(is.na(after_pb), 0, after_pb),
          # repeater = totpb > 1, removing this because errors in 2014 means every early voter is a repeater, which isn't correct
-         age_at_vote = year - year(DoB) )
+         age_at_vote = year - year(DoB) ,
+         Female = ifelse(Sex == "F", 1, 0))
 ## I think there are some nonsense ages in here and I need to investigate DoB coding more
 
 pb_long <- pb_long %>%  filter(year >= 2008)
@@ -80,56 +80,19 @@ pb_long <- pb_long %>%
 
 ####  Model explorations ---------------------------------------------------------------------------------------------------------------------------
 
-## this is doing some very basic plots exploring distribution of voting across subsets
 
-ggplot(pb_long) + geom_bar(aes(x = as.factor(turned_out), fill = election_type), stat = "count", position = "dodge") + facet_wrap(~year)
-ggplot(pb_long) + geom_bar(aes(x = as.factor(turned_out), fill = as.factor(after_pb)), position = "dodge") + facet_wrap(~year)
-
-pb_long %>% mutate(turned_out = factor(turned_out, levels = c(0, 1), labels = c("Did not vote", "Voted")),
-                   after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB"))) %>% 
-  filter(election_type == "g" & year == 2008)  %>% 
-  ggplot() + geom_bar(aes(x = as.factor(year),  fill = turned_out), position = "fill") + 
-  facet_grid(Race~after_pb*pb, scales = "free") +coord_flip() + scale_y_continuous(labels = scales::percent) +
-  labs(y="", x="") +theme_minimal() + labs(title = "Turnout in 2008 general election")
-
-
-pb_long %>% mutate(turned_out = factor(turned_out, levels = c(0, 1), labels = c("Did not vote", "Voted")),
-                   after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB"))) %>% 
-  filter(election_type == "g" & year == 2016)  %>% 
-  ggplot() + geom_bar(aes(x = as.factor(year),  fill = turned_out), position = "fill") + 
-  facet_grid(Race~after_pb*pb, scales = "free") +coord_flip() + scale_y_continuous(labels = scales::percent) +
-  labs(y="", x="") +theme_minimal() + labs(title = "Turnout in 2016 general election")
-
-pb_long %>% mutate(turned_out = factor(turned_out, levels = c(0, 1), labels = c("Did not vote", "Voted")),
-                   after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB"))) %>% 
-  filter(election_type == "g" & year == 2012)  %>% 
-  ggplot() + geom_bar(aes(x = as.factor(year),  fill = turned_out), position = "fill") + 
-  facet_grid(Race~after_pb*pb, scales = "free") +coord_flip() + scale_y_continuous(labels = scales::percent) +
-  labs(y="", x="") +theme_minimal() + labs(title = "Turnout in 2012 general election")
-
-
-
-p <- pb_long %>% mutate(turned_out = factor(turned_out, levels = c(0, 1), labels = c("Did not vote", "Voted")),
-                   after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB"))) %>% 
-  filter(election_type == "g")  %>% 
-  ggplot() + geom_bar(aes(x = as.factor(year),  fill = turned_out), position = "fill") + 
-  facet_grid(Race~after_pb*pb, scales = "free") 
-ggplotly(p)
-
-pb_long %>%
-  group_by(year, election_type,race, after_pb, pb) %>% 
-  summarize(nvoters = n(),
-            turnout = sum(turned_out, na.rm = T)/n()) %>% 
-  filter(year == 2016, election_type == "g")
 
 ## looking at a very basic linear regression predicting turnout
 bas_log <- lm(turned_out ~ pb + after_pb + as.factor(year) + election_type , data = pb_long)
 summary(bas_log)
 
+bas_log_all <- lm(turned_out ~ pb + after_pb + as.factor(year) + election_type +
+                    Sex + Race + age + medhhinc + white + college + majmatch, data = pb_long)
+summary(bas_log_all) ## R-Squared = .31!
 
 ## Quick comparison of linear and logit models with covariates - this is mostly just to give a sense of the relative magnitude of effects in the two model approaches
 library(margins)
-covar_formula <- turned_out ~ pb + after_pb + as.factor(year) +  election_type  + Race + age + Sex + medhhinc + Sex
+covar_formula <- turned_out ~ pb + after_pb + as.factor(year) +  election_type  + Race + age + Sex + medhhinc + college + white + majmatch
 covar_logit <- pb_long %>% glm(covar_formula, data = ., family = binomial())
 summary(covar_logit)
 dydx(pb_long, covar_logit, "after_pb", change = c(0,1))[[1]] %>% mean
@@ -139,56 +102,93 @@ dydx(pb_long, covar_lm, "after_pb", change = c(0,1))[[1]] %>% mean
 
 ##### Trying with lmer getting random effects for individuals -----------------------------------------------------------------------------------------------
 
-# Iterating for model selection: 
-## increment over coefficient batches, compare AIC/BIC
-## ** still to do
-
-## making FE dummies for use with SIMCF - 
-## Replicating Chris Adolph's makeFEdummies, from simcf package (not on CRAN, available from http://faculty.washington.edu/cadolph/?page=60)
-makeFEdummies <- function (unit, names = NULL) {
-  fe <- model.matrix(~factor(unit, levels = unique(as.character(unit))) - 1)
-  if (is.null(names)) {
-    colnames(fe) <- unique(as.character(unit))
-  }
-  else {
-    colnames(fe) <- names
-  }
-  fe
-}
-
-pb_long_orig <- pb_long # making a copy in case all is f'ed up and don't want to rerun all processing code
-
-pb_long <- pb_long_orig # resetting to the copied original 
-raceFE <- makeFEdummies(pb_long$Race) 
-colnames(raceFE) <- paste("race", colnames(raceFE), sep = "_")
-yearFE <- makeFEdummies(pb_long$year)
-colnames(yearFE) <- paste("year", colnames(yearFE), sep = "_")
-election_typeFE <- makeFEdummies(pb_long$election_type)
-colnames(election_typeFE) <- paste("election", colnames(election_typeFE), sep = "_")
-
-pb_long <- bind_cols(pb_long, as.data.frame(raceFE), as.data.frame(yearFE), as.data.frame(election_typeFE))
-
-## Confirming that models with FEs for simcf now produce identical coefs as base R models
-# This was included as part of the process of de-bugging SIMCF but is kind of useful as a reality check/teaching moment so I left the code in.
-logit_lme_f <- turned_out ~ pb + after_pb + as.factor(year) + election_type + (1 | VANID) 
+logit_lme_f <- turned_out ~ pb + after_pb + Race + as.factor(year) + election_type + age + medhhinc + white + college + majmatch + (1 | VANID) 
 lme_logit <- glmer(logit_lme_f, data = pb_long, family = binomial(), nAGQ = 0)   
 summary(lme_logit)
 
-logit_lme_simcf <- turned_out ~ pb + after_pb + 
-  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 +
-  election_p + election_pp+ (1 | VANID) 
-lme_logit_simcf <- glmer(logit_lme_simcf, data = pb_long, family = binomial(), nAGQ = 0)  
-summary(lme_logit_simcf)
-
 ## Comparing inclusion of NYCDD random effects - fit is improved by including NYCDD
-logit_full_fm <- turned_out ~ pb + after_pb*Race + as.factor(year) + election_type + age + medhhinc + white +  (1 | VANID) + (1|NYCCD)
+
+logit_full_fm <- turned_out ~ pb + after_pb + Race + Sex + as.factor(year) + election_type + age + medhhinc + white + college + majmatch + (1 | VANID) + (1|NYCCD)
 lme_full <-  glmer(logit_full_fm, data = pb_long, family = binomial(), nAGQ = 0) 
 summary(lme_full)
 
 AIC(lme_full)
-BIC(lme_full)
 AIC(lme_logit)
+BIC(lme_full)
 BIC(lme_logit)
+
+AICcollege <- AIC(lme_full)
+BICcollege <- BIC(lme_full)
+
+dydx(pb_long, lme_full, "after_pb", change = c(0,1))[[1]] %>% mean
+
+## testing not including college
+logit_full_fm_nocollege <- turned_out ~ pb + after_pb + as.factor(year) + election_type + Race + age + medhhinc + white + majmatch + (1 | VANID) + (1|NYCCD)
+lme_full_ncollege <-  glmer(logit_full_fm_nocollege, data = pb_long, family = binomial(), nAGQ = 0) 
+AIC(lme_full_ncollege)
+AIC(lme_full)
+BIC(lme_full_ncollege)
+BIC(lme_full)
+
+dydx(pb_long, lme_full_ncollege, "after_pb", change = c(0,1))[[1]] %>% mean
+## all this points to keeping college in the analyis. Not sure why I originally dropped it...
+
+## testing including non-linear effects for age and medhhinc (as suggested by plotting)
+logit_age2_form <- turned_out ~ pb + after_pb + Race + Sex + as.factor(year) + election_type + age + I(age^2) + medhhinc + white + college + majmatch + (1 | VANID) + (1|NYCCD)
+logit_med2_form  <-  turned_out ~ pb + after_pb + Race + Sex + as.factor(year) + election_type + age + I(medhhinc^2) + medhhinc + white + college + majmatch + (1 | VANID) + (1|NYCCD)
+logit_lmed_form  <-  turned_out ~ pb + after_pb + Race + Sex + as.factor(year) + election_type + age + log(medhhinc) + white + college + majmatch + (1 | VANID) + (1|NYCCD)
+
+lme_age2 <- glmer(logit_age2_form, data = pb_long, family = binomial(), nAGQ = 0) 
+lme_med2 <- glmer(logit_med2_form, data = pb_long, family = binomial(), nAGQ = 0) 
+lme_lmed <- glmer(logit_lmed_form, data = pb_long, family = binomial(), nAGQ = 0) 
+
+AIC(lme_full)
+AIC(lme_age2)
+AIC(lme_med2)
+AIC(lme_lmed)
+
+BIC(lme_full)
+BIC(lme_age2)
+BIC(lme_med2)
+BIC(lme_lmed)
+
+#incl white?:
+lme_nowhite_form <- turned_out ~ pb + after_pb + Race + as.factor(year) + election_type + age + medhhinc + college + majmatch + (1 | VANID) + (1|NYCCD)
+lme_nowhite <- glmer(lme_nowhite_form, data = pb_long, family = binomial(), nAGQ = 0) 
+
+AIC(lme_full)
+AIC(lme_nowhite)
+BIC(lme_full)
+BIC(lme_nowhite)
+
+## % white isn't contributing much once majority race is included (esp. since matched on nonwhite)
+##  BIC and AIC disagree on whether it is worth it (improves model fit) - maybe leave out
+
+#incl gender?:
+lme_nosex_form <- turned_out ~ pb + after_pb + Race + as.factor(year) + election_type + age + medhhinc + college + majmatch + (1 | VANID) + (1|NYCCD)
+lme_nosex <- glmer(lme_nowhite_form, data = pb_long, family = binomial(), nAGQ = 0) 
+
+AIC(lme_full)
+AIC(lme_nosex)
+BIC(lme_full)
+BIC(lme_nosex)
+
+## Both AIC and BIC agree that sex doesn't add anything to the model - however, it's not
+## a huge difference and I want to be able to include gender in the the subgroup breakdowns,
+## so should include it for comparability
+
+# Age at vote eligibility flag
+
+logit_elig_fm <- turned_out ~ pb + after_pb + Race + Sex + as.factor(year) + election_type + age + I(age^2) + I(age_at_vote < 18) + medhhinc + white + college + majmatch + (1 | VANID) + (1|NYCCD)
+lme_elig <-  glmer(logit_elig_fm, data = pb_long, family = binomial(), nAGQ = 0) 
+summary(lme_elig)
+
+AIC(lme_age2)
+AIC(lme_elig)
+BIC(lme_age2)
+BIC(lme_elig)
+
+## including flag for age at vote makes a huge improvement in model fit. Use it!
 
 ## explorign some basic predictions from thi
 #ind effects - confirming that they're not correlated with race
@@ -256,87 +256,6 @@ nd_mi  %>%
   geom_point(aes(color = as.factor(after_pb))) +
   labs(title = "Predicted probability of voting in general election in 2016 \n before and after PB (in a non-PB district)", 
        x = "Median Census Tract HH Income", y = "Predicted probability of Voting", color = "") +
-  coord_flip() +
-  theme_minimal()
-
-
-########################### CODE FOR MODEL TO PREDICT VIA SIMCF ------------------------------------------------------------
-### Conditioned on Race: --------------------------------------
-
-# specifying formula for model with xplicit dummies
-logit_full_simcf <- turned_out ~ pb + after_pb*race_B + after_pb*race_A + after_pb*race_H + after_pb*race_U +
-  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 +
-  election_p + election_pp + age + medhhinc + white + (1 | VANID) + (1|NYCCD)
-# model formula omitting random effects for predictions of typical effects 
-logit_full_form <- turned_out ~ pb + after_pb*race_B + after_pb*race_A + after_pb*race_H + after_pb*race_U +
-  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 +
-  election_p + election_pp + age + medhhinc + white 
-
-# fitting model
-lme_full_simcf <- glmer(logit_full_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
-
-#identifying mean random effect for pb distrcts vs non pb districts
-dists <- ranef(lme_full_simcf)$NYCCD
-dists$NYCCD <- as.numeric(rownames(dists))
-pb_ranef <- mean(dists[dists$NYCCD %in% pbdistricts, "(Intercept)"])
-nopb_ranef <- mean(dists[! dists$NYCCD %in% pbdistricts, "(Intercept)"])
-
-## creating simulated betas for nonpb districts
-sims <- 1000
-pe <- fixef(lme_full_simcf)
-pe["(Intercept)"] <- pe["(Intercept)"] + nopb_ranef
-vc <- vcov(lme_full_simcf) 
-simbetas <- mvrnorm(sims, pe, vc)
-
-## creating hypothetical scenarios for predictions
-
-nscen <- length(unique(pb_long$Race))*2
-xhyp <- cfMake(logit_full_form, pb_long, nscen = nscen, f = "min")
-
-for (i in 1:nscen){
-  xhyp <- cfChange(xhyp, "age", x = mean(pb_long$age), xpre = mean(pb_long$age), scen = i)
-  xhyp <- cfChange(xhyp, "medhhinc", x = mean(pb_long$medhhinc), xpre = mean(pb_long$medhhinc), scen = i)
-  xhyp <- cfChange(xhyp, "white", x = mean(pb_long$white), xpre = mean(pb_long$white), scen = i)
-}
-for (i in (nscen/2+1):nscen){
-  xhyp <- cfChange(xhyp, "after_pb", x = 1, xpre = 0, scen = i)
-  xhyp <- cfChange(xhyp, "year_2016", x = 1, xpre = 1, scen = i)
-}
-for (i in 1:(nscen/2)){
-  xhyp <- cfChange(xhyp, "after_pb", x = 0, xpre = 0, scen = i)
-}
-
-for (i in c(2,7)){
-  xhyp <- cfChange(xhyp, "race_B", x = 1, xpre = 1, scen = i)
-}
-for (i in c(3,8)){
-  xhyp <- cfChange(xhyp, "race_H", x = 1, xpre = 1, scen = i)
-}
-for (i in c(4,9)){
-  xhyp <- cfChange(xhyp, "race_A", x = 1, xpre = 1, scen = i)
-}
-for (i in c(5,10)){
-  xhyp <- cfChange(xhyp, "race_U", x = 1, xpre = 1, scen = i)
-}
-
-## predicted probabilities in voting
-yhyp <- logitsimev(xhyp, simbetas)
-
-#expected change in predicted probabilities of voting
-yhyp_fd <- logitsimfd(xhyp, simbetas)
-
-preds <-  cbind(xhyp$x, as.data.frame(yhyp)) %>% 
-  mutate(Race = rep(c("W", "B", "H", "A", "U"), 2)) 
-
-### plotting predicted probabilities of voting with ggplot
-preds %>% dplyr::select(after_pb, Race, pe, lower, upper) %>% 
-  mutate(after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB")),
-         Race = factor(Race, levels = c("W", "B", "H", "A", "U"), labels = c("White", "Black", "Hispanic", "Asian", "Unknown"))) %>% 
-  ggplot(aes(y = pe, ymin = lower, ymax = upper, x = Race)) + 
-  # geom_segment(aes(xend = Race, y = 0, yend = preds, color = as.factor(after_pb)))+
-  geom_pointrange(aes(color = as.factor(after_pb))) +
-  labs(title = "Predicted probability of voting in general election in 2016 \n before and after PB (in a non-PB district)", 
-       x = "", y = "Predicted probability of Voting", color = "") +
   coord_flip() +
   theme_minimal()
 

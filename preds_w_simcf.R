@@ -1,4 +1,4 @@
-
+pb_long <- pb_long %>% mutate(Female = ifelse(Sex == "F", 1, 0))
 
 ##### Predictions with SIMCF
 makeFEdummies <- function (unit, names = NULL) {
@@ -31,15 +31,21 @@ pb_long <- bind_cols(pb_long, as.data.frame(raceFE), as.data.frame(yearFE), as.d
 ################################################################################################################################################
 ######################## AGGREGATE MODEL ------------------------------------------------------------------------------------
 ### Estimated model
-logit_base_simcf <- turned_out ~ pb + after_pb + race_B + race_A + race_H + race_U +
+logit_base_simcf <- turned_out ~ pb + after_pb + election_p + election_pp +
   year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
-  election_p + election_pp + age + I(age_at_vote < 18) + medhhinc + white + (1 | VANID) + (1 | NYCCD)
+  race_B + race_A + race_H + race_U + Female + age + I(age^2) + I(age_at_vote < 18) + 
+  medhhinc + college + majmatch + (1 | VANID) + (1 | NYCCD)
 lme_base_simcf <- glmer(logit_base_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 #######################################################################################################################################
 ### Formula for simcf
-logit_base_form <-  turned_out ~ pb + after_pb + race_B + race_A + race_H + race_U +
+logit_base_form <-  turned_out ~ pb + after_pb + election_p + election_pp +
   year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
-  election_p + election_pp + age + I(age_at_vote < 18) + medhhinc + white
+  race_B + race_A + race_H + race_U + Female + age + I(age^2) + I(age_at_vote < 18) + 
+  medhhinc + college + majmatch
+
+#calculating PCP
+compare <- data.frame(obs = lme_base_simcf@frame$turned_out, pred = as.numeric(fitted(lme_base_simcf)> 0.5))
+table(compare$obs, compare$pred) %>% prop.table()
 
 library(MASS)
 
@@ -64,6 +70,7 @@ for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2017", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "election_pp", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "election_p", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "pb", x = 0, xpre = 0, scen = i)
 }
 
 for (i in 1){
@@ -118,12 +125,13 @@ preds %>%
   theme_minimal() +
   theme(axis.title=element_text(size=11))
 ggsave("Paper/Figs/base_by_year.pdf", width = 6, height = 4)
-# ggsave("Paper/Figs/base_by_year.png", width = 6, height = 5)
+#ggsave("Paper/Figs/base_by_year.png", width = 6, height = 5)
 
 ################################################################################################################################################
 ######################## DISAGGREGATE BY RACE ------------------------------------------------------------------------------------
 ### Estimated model
-logit_race_simcf <- turned_out ~ pb + pb*race_B + pb*race_A + pb*race_H + pb*race_U + 
+logit_race_simcf <- turned_out ~ pb + after_pb + election_p + election_pp +
+  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
   after_pb*race_B + after_pb*race_A + after_pb*race_H + after_pb*race_U +
   year_2009*race_B + year_2009*race_A + year_2009*race_H + year_2009*race_U +
   year_2010*race_B + year_2010*race_A + year_2010*race_H + year_2010*race_U +
@@ -134,14 +142,17 @@ logit_race_simcf <- turned_out ~ pb + pb*race_B + pb*race_A + pb*race_H + pb*rac
   year_2015*race_B + year_2015*race_A + year_2015*race_H + year_2015*race_U +
   year_2016*race_B + year_2016*race_A + year_2016*race_H + year_2016*race_U +
   year_2017*race_B + year_2017*race_A + year_2017*race_H + year_2017*race_U +
-  election_p + election_pp + age + I(age_at_vote < 18) + medhhinc + white + (1 | VANID) + (1 | NYCCD)
-lme_race_simcf <- glmer(logit_race_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
+  Female + age + I(age^2) + I(age_at_vote < 18) + 
+  medhhinc + college + majmatch + (1 | VANID) + (1 | NYCCD)
+    
+# lme_race_simcf <- glmer(logit_race_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 
 
 
 #######################################################################################################################################
 ### Formula for simcf
-logit_race_form <- logit_race_simcf <- turned_out ~ pb + pb*race_B + pb*race_A + pb*race_H + pb*race_U + 
+logit_race_form <- turned_out ~ pb + after_pb + election_p + election_pp +
+  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
   after_pb*race_B + after_pb*race_A + after_pb*race_H + after_pb*race_U +
   year_2009*race_B + year_2009*race_A + year_2009*race_H + year_2009*race_U +
   year_2010*race_B + year_2010*race_A + year_2010*race_H + year_2010*race_U +
@@ -152,9 +163,9 @@ logit_race_form <- logit_race_simcf <- turned_out ~ pb + pb*race_B + pb*race_A +
   year_2015*race_B + year_2015*race_A + year_2015*race_H + year_2015*race_U +
   year_2016*race_B + year_2016*race_A + year_2016*race_H + year_2016*race_U +
   year_2017*race_B + year_2017*race_A + year_2017*race_H + year_2017*race_U +
-  election_p + election_pp + age + I(age_at_vote < 18) +medhhinc + white
+  Female + age + I(age^2) + I(age_at_vote < 18) + 
+  medhhinc + college + majmatch
 
-library(MASS)
 
 sims <- 10000
 pe <- fixef(lme_race_simcf)
@@ -169,8 +180,11 @@ for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "age", x = mean(pb_long$age), xpre = mean(pb_long$age), scen = i)
   xhyp <- cfChange(xhyp, "medhhinc", x = mean(pb_long$medhhinc), xpre = mean(pb_long$medhhinc), scen = i)
   xhyp <- cfChange(xhyp, "white", x = mean(pb_long$white), xpre = mean(pb_long$white), scen = i)
+  xhyp <- cfChange(xhyp, "majmatch", x = mean(pb_long$majmatch), xpre = mean(pb_long$majmatch), scen = i)
   xhyp <- cfChange(xhyp, paste0("year_", simyear), x = 1, xpre = 1, scen = i)
   xhyp <- cfChange(xhyp, "age_at_vote", x = mean(pb_long$age_at_vote), xpre = mean(pb_long$age_at_vote), scen = i)
+  xhyp <- cfChange(xhyp, "Female", x = mean(pb_long$Female), xpre = mean(pb_long$Female), scen = i)
+  xhyp <- cfChange(xhyp, "college", x = mean(pb_long$college), xpre = mean(pb_long$college), scen = i)
 }
 for (i in (nscen/2+1):nscen){
   xhyp <- cfChange(xhyp, "after_pb", x = 1, xpre = 0, scen = i)
@@ -235,23 +249,115 @@ cbind(xhyp$x[6:10,], as.data.frame(yhyp_fd)[6:10,]) %>%
        x = "", y = "Change in predicted probability of voting", color = "") +
   coord_flip() +
   theme_minimal()
-# ggsave("Paper/Figs/fd_byrace.pdf", width = 5, height = 4)
+  # ggsave("Paper/Figs/fd_byrace.pdf", width = 5, height = 4)
+
+
+################################################################################################################################################
+######################## DISAGGREGATE BY majmatch ---------------------------------------------------------------------------------------------------------
+### Estimated model
+
+logit_majmatch_simcf <- turned_out ~ pb + after_pb + election_p + election_pp +
+  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+  race_B + race_A + race_H + race_U + 
+  majmatch*after_pb +
+  year_2009*majmatch + year_2010*majmatch + year_2011*majmatch + year_2012*majmatch + year_2013*majmatch + year_2014*majmatch + year_2015*majmatch + year_2016*majmatch + year_2017*majmatch +
+  Female + age + I(age^2) + I(age_at_vote < 18) + 
+  medhhinc + college + (1 | VANID) + (1 | NYCCD)
+
+# lme_majmatch_simcf <- glmer(logit_gender_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
+#######################################################################################################################################
+### Formula for simcf
+logit_majmatch_form <-  turned_out ~ pb + after_pb + election_p + election_pp +
+  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+  race_B + race_A + race_H + race_U + 
+  majmatch*after_pb +
+  year_2009*majmatch + year_2010*majmatch + year_2011*majmatch + year_2012*majmatch + year_2013*majmatch + year_2014*majmatch + year_2015*majmatch + year_2016*majmatch + year_2017*majmatch +
+  Female + age + I(age^2) + I(age_at_vote < 18) + 
+  medhhinc + college
+
+sims <- 10000
+pe <- fixef(lme_majmatch_simcf)
+vc <- vcov(lme_majmatch_simcf) 
+simbetas <- mvrnorm(sims, pe, vc)
+
+nscen <- length(unique(pb_long$majmatch))*2
+xhyp <- cfMake(logit_majmatch_form, pb_long, nscen = nscen, f = "mean")
+
+simyear <- "2016"
+
+for (i in 1:nscen){
+  xhyp <- cfChange(xhyp, "year_2008", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "year_2009", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "year_2010", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "year_2011", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "year_2012", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "year_2013", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "year_2014", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "year_2015", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "year_2016", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "year_2017", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, paste0("year_", simyear), x = 1, xpre = 1, scen = i)
+  xhyp <- cfChange(xhyp, "pb", x = 0, xpre = 0, scen = i)
+}
+
+for (i in (nscen/2+1):nscen){
+  xhyp <- cfChange(xhyp, "after_pb", x = 1, xpre = 0, scen = i)
+}
+for (i in 1:(nscen/2)){
+  xhyp <- cfChange(xhyp, "after_pb", x = 0, xpre = 0, scen = i)
+}
+
+for (i in c(1,3)){
+  xhyp <- cfChange(xhyp, "majmatch", x = 1, xpre = 1, scen = i)
+}
+for (i in c(2,4)){
+  xhyp <- cfChange(xhyp, "majmatch", x = 0, xpre = 0, scen = i)
+}
+
+yhyp <- logitsimev(xhyp, simbetas)
+
+yhyp_fd <- logitsimfd(xhyp, simbetas)
+
+preds_majmatch <-  cbind(xhyp$x, as.data.frame(yhyp))
+
+preds_fd_majmatch <- cbind(xhyp$x[3:4,], as.data.frame(yhyp_fd)[3:4,] )
+
+preds_majmatch %>% dplyr::select(after_pb, majmatch, pe, lower, upper) %>% 
+  mutate(after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB")),
+         majmatch = factor(majmatch, levels = c(0,1), labels = c("Not majority race ID", "Majority race ID"))) %>% 
+  ggplot(aes(y = pe, ymin = lower, ymax = upper, x = majmatch)) + 
+  # geom_segment(aes(xend = Race, y = 0, yend = preds, color = as.factor(after_pb)))+
+  geom_pointrange(aes(color = as.factor(after_pb))) +
+  labs(title = paste0("By majority race alignment: predicted probability of voting in general election in ", simyear, "\n before and after PB (in a non-PB district)"), 
+       x = "", y = "Predicted probability of Voting", color = "") +
+  coord_flip() +
+  theme_minimal()
+ggsave("Paper/Figs/bymajmatch.pdf", width = 5, height = 4)
+
 
 
 ################################################################################################################################################
 ######################## DISAGGREGATE BY gender ---------------------------------------------------------------------------------------------------------
 ### Estimated model
 
-pb_long <- pb_long %>% mutate(Female = ifelse(Sex == "F", 1, 0))
-logit_gender_simcf <- turned_out ~ pb + after_pb*Female + race_B + race_A + race_H + race_U +
+logit_gender_simcf <- turned_out ~ pb + after_pb + election_p + election_pp +
+  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+  race_B + race_A + race_H + race_U + 
+  Female*after_pb +
   year_2009*Female + year_2010*Female + year_2011*Female + year_2012*Female + year_2013*Female + year_2014*Female + year_2015*Female + year_2016*Female + year_2017*Female +
-  election_p + election_pp + age + I(age_at_vote < 18) + medhhinc + white + (1 | VANID) + (1 | NYCCD)
-lme_gender_simcf <- glmer(logit_gender_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
+  age + I(age^2) + I(age_at_vote < 18) + 
+  medhhinc + college + majmatch + (1 | VANID) + (1 | NYCCD)
+
+# lme_gender_simcf <- glmer(logit_gender_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 #######################################################################################################################################
 ### Formula for simcf
-logit_gender_form <-  turned_out ~ pb + after_pb*Female + race_B + race_A + race_H + race_U +
+logit_gender_form <-  turned_out ~ pb + after_pb + election_p + election_pp +
+  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+  race_B + race_A + race_H + race_U + 
+  Female*after_pb +
   year_2009*Female + year_2010*Female + year_2011*Female + year_2012*Female + year_2013*Female + year_2014*Female + year_2015*Female + year_2016*Female + year_2017*Female +
-  election_p + election_pp + age + I(age_at_vote < 18) + medhhinc + white
+  age + I(age^2) + I(age_at_vote < 18) + 
+  medhhinc + college + majmatch
 
 sims <- 10000
 pe <- fixef(lme_gender_simcf)
@@ -275,6 +381,7 @@ for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2016", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2017", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, paste0("year_", simyear), x = 1, xpre = 1, scen = i)
+  xhyp <- cfChange(xhyp, "pb", x = 0, xpre = 0, scen = i)
 }
 
 for (i in (nscen/2+1):nscen){
@@ -305,7 +412,7 @@ preds_gender %>% dplyr::select(after_pb, Female, pe, lower, upper) %>%
   ggplot(aes(y = pe, ymin = lower, ymax = upper, x = youth)) + 
   # geom_segment(aes(xend = Race, y = 0, yend = preds, color = as.factor(after_pb)))+
   geom_pointrange(aes(color = as.factor(after_pb))) +
-  labs(title = paste0("By age: predicted probability of voting in general election in ", simyear, "\n before and after PB (in a non-PB district)"), 
+  labs(title = paste0("By gender: predicted probability of voting in general election in ", simyear, "\n before and after PB (in a non-PB district)"), 
        x = "", y = "Predicted probability of Voting", color = "") +
   coord_flip() +
   theme_minimal()
@@ -317,22 +424,36 @@ ggsave("Paper/Figs/bygender.pdf", width = 5, height = 4)
 ######################## DISAGGREGATE BY well educ ---------------------------------------------------------------------------------------------------------
 ### Estimated model
 pb_long <- pb_long %>% mutate(well_educ = as.numeric(college > quantile(college, probs = .5)))
-logit_educ_simcf <- turned_out ~ pb + after_pb*well_educ + race_B + race_A + race_H + race_U +
-  well_educ*year_2009 + well_educ*year_2010 + well_educ*year_2011 + well_educ*year_2012 + well_educ*year_2013 + well_educ*year_2014 + well_educ*year_2015 + well_educ*year_2016 + well_educ*year_2016 +
-  election_p + election_pp + age + I(age_at_vote < 18) + white + (1 | VANID) + (1 | NYCCD)
-lme_educ_simcf <- glmer(logit_educ_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
+logit_educ_simcf <-  turned_out ~ pb + after_pb + election_p + election_pp +
+  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+  race_B + race_A + race_H + race_U + 
+  Female + age + I(age^2) + I(age_at_vote < 18) + 
+  medhhinc + college + majmatch +
+  college*after_pb +
+  college*year_2009 + college*year_2010 + college*year_2011 + college*year_2012 + college*year_2013 + college*year_2014 + college*year_2015 + college*year_2016 + college*year_2016 +
+  (1 | VANID) + (1 | NYCCD)
+
+# lme_educ_simcf <- glmer(logit_educ_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 #######################################################################################################################################
 ### Formula for simcf
-logit_educ_form <-  turned_out ~ pb + after_pb*well_educ + race_B + race_A + race_H + race_U +
-  well_educ*year_2009 + well_educ*year_2010 + well_educ*year_2011 + well_educ*year_2012 + well_educ*year_2013 + well_educ*year_2014 + well_educ*year_2015 + well_educ*year_2016 + well_educ*year_2016 +
-  election_p + election_pp + age + I(age_at_vote < 18) + white
+logit_educ_form <-  turned_out ~ pb + after_pb + election_p + election_pp +
+  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+  race_B + race_A + race_H + race_U + 
+  Female + age + I(age^2) + I(age_at_vote < 18) + 
+  medhhinc + college + majmatch +
+  college*after_pb +
+  college*year_2009 + college*year_2010 + college*year_2011 + college*year_2012 + college*year_2013 + college*year_2014 + college*year_2015 + college*year_2016 + college*year_2016
+
+
+educ_levels <- quantile(pb_long$college, probs = c(.25,.75))
+names(educ_levels) <- c("low", "high")
 
 sims <- 10000
 pe <- fixef(lme_educ_simcf)
 vc <- vcov(lme_educ_simcf) 
 simbetas <- mvrnorm(sims, pe, vc)
 
-nscen <- length(unique(pb_long$well_educ))*2
+nscen <- length(educ_levels)*2
 xhyp <- cfMake(logit_educ_form, pb_long, nscen = nscen, f = "mean")
 
 simyear <- "2016"
@@ -349,6 +470,7 @@ for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2016", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2017", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, paste0("year_", simyear), x = 1, xpre = 1, scen = i)
+  xhyp <- cfChange(xhyp, "pb", x = 0, xpre = 0, scen = i)
 }
 
 for (i in (nscen/2+1):nscen){
@@ -359,10 +481,10 @@ for (i in 1:(nscen/2)){
 }
 
 for (i in c(1,3)){
-  xhyp <- cfChange(xhyp, "well_educ", x = 1, xpre = 1, scen = i)
+  xhyp <- cfChange(xhyp, "college", x = educ_levels["high"], xpre = educ_levels["high"], scen = i)
 }
 for (i in c(2,4)){
-  xhyp <- cfChange(xhyp, "well_educ", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "college", x = educ_levels["low"], xpre = educ_levels["low"], scen = i)
 }
 
 yhyp <- logitsimev(xhyp, simbetas)
@@ -372,10 +494,10 @@ yhyp_fd <- logitsimfd(xhyp, simbetas)
 preds_educ <-  cbind(xhyp$x, as.data.frame(yhyp))
 preds_fd_educ <- cbind(xhyp$x[3:4,], as.data.frame(yhyp_fd)[3:4,])
 
-preds_educ %>% dplyr::select(after_pb, well_educ, pe, lower, upper) %>% 
+preds_educ %>% dplyr::select(after_pb, college, pe, lower, upper) %>% 
   mutate(after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB")),
-         well_educ = factor(well_educ, levels = c(1, 0), labels = c("More education area", "Less education area"))) %>% 
-  ggplot(aes(y = pe, ymin = lower, ymax = upper, x = well_educ)) + 
+         college = factor(college, levels = educ_levels, labels = c("Lower education area", "Higher education area"))) %>% 
+  ggplot(aes(y = pe, ymin = lower, ymax = upper, x = college)) + 
   # geom_segment(aes(xend = Race, y = 0, yend = preds, color = as.factor(after_pb)))+
   geom_pointrange(aes(color = as.factor(after_pb))) +
   labs(title = paste0("By education: predicted probability of voting in general election in ", simyear, "\n before and after PB (in a non-PB district)"), 
@@ -387,23 +509,35 @@ ggsave("Paper/Figs/byeduc.pdf", width = 5, height = 4)
 ################################################################################################################################################
 ######################## DISAGGREGATE BY wealthy ---------------------------------------------------------------------------------------------------------
 ### Estimated model
-pb_long <- pb_long %>% mutate(wealthy = as.numeric(medhhinc > quantile(medhhinc, probs = .5)))
-logit_wealth_simcf <- turned_out ~ pb + after_pb*wealthy + race_B + race_A + race_H + race_U +
-  wealthy*year_2009 + wealthy*year_2010 + wealthy*year_2011 + wealthy*year_2012 + wealthy*year_2013 + wealthy*year_2014 + wealthy*year_2015 + wealthy*year_2016 + wealthy*year_2017 +
-  election_p + election_pp + age + I(age_at_vote < 18) + white + (1 | VANID) + (1 | NYCCD)
-lme_wealth_simcf <- glmer(logit_wealth_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
+#pb_long <- pb_long %>% mutate(wealthy = as.numeric(medhhinc > quantile(medhhinc, probs = .5)))
+logit_wealth_simcf <- turned_out ~ pb + after_pb + election_p + election_pp +
+  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+  race_B + race_A + race_H + race_U + 
+  Female + age + I(age^2) + I(age_at_vote < 18) + 
+  medhhinc + college + majmatch +
+  medhhinc*after_pb +
+  medhhinc*year_2009 + medhhinc*year_2010 + medhhinc*year_2011 + medhhinc*year_2012 + medhhinc*year_2013 + medhhinc*year_2014 + medhhinc*year_2015 + medhhinc*year_2016 + medhhinc*year_2016  + 
+  (1 | VANID) + (1 | NYCCD)
+# lme_wealth_simcf <- glmer(logit_wealth_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 #######################################################################################################################################
 ### Formula for simcf
-logit_wealth_form <-  turned_out ~ pb + after_pb*wealthy + race_B + race_A + race_H + race_U +
-  wealthy*year_2009 + wealthy*year_2010 + wealthy*year_2011 + wealthy*year_2012 + wealthy*year_2013 + wealthy*year_2014 + wealthy*year_2015 + wealthy*year_2016 + wealthy*year_2017 +
-  election_p + election_pp + age + I(age_at_vote < 18) + white
+logit_wealth_form <-  turned_out ~ pb + after_pb + election_p + election_pp +
+  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+  race_B + race_A + race_H + race_U + 
+  Female + age + I(age^2) + I(age_at_vote < 18) + 
+  medhhinc + college + majmatch +
+  medhhinc*after_pb +
+  medhhinc*year_2009 + medhhinc*year_2010 + medhhinc*year_2011 + medhhinc*year_2012 + medhhinc*year_2013 + medhhinc*year_2014 + medhhinc*year_2015 + medhhinc*year_2016 + medhhinc*year_2016  
 
-sims <- 1000
+wealth_levels <- quantile(pb$medhhinc, probs = c(.25, .75))
+names(wealth_levels) <- c("less wealthy", "more wealthy")
+
+sims <- 10000
 pe <- fixef(lme_wealth_simcf)
 vc <- vcov(lme_wealth_simcf) 
 simbetas <- mvrnorm(sims, pe, vc)
 
-nscen <- length(unique(pb_long$wealthy))*2
+nscen <- length(wealth_levels)*2
 xhyp <- cfMake(logit_wealth_form, pb_long, nscen = nscen, f = "mean")
 
 simyear <- "2016"
@@ -420,6 +554,8 @@ for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2016", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2017", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, paste0("year_", simyear), x = 1, xpre = 1, scen = i)
+  xhyp <- cfChange(xhyp, "pb", x = 0, xpre = 0, scen = i)
+  
 }
 
 for (i in (nscen/2+1):nscen){
@@ -430,10 +566,10 @@ for (i in 1:(nscen/2)){
 }
 
 for (i in c(1,3)){
-  xhyp <- cfChange(xhyp, "wealthy", x = 1, xpre = 1, scen = i)
+  xhyp <- cfChange(xhyp, "medhhinc", x = wealth_levels["more wealthy"], xpre = wealth_levels["more wealthy"], scen = i)
 }
 for (i in c(2,4)){
-  xhyp <- cfChange(xhyp, "wealthy", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "medhhinc", x = wealth_levels["less wealthy"], xpre = wealth_levels["less wealthy"], scen = i)
 }
 
 yhyp <- logitsimev(xhyp, simbetas)
@@ -443,10 +579,10 @@ yhyp_fd <- logitsimfd(xhyp, simbetas)
 preds_wealth <-  cbind(xhyp$x, as.data.frame(yhyp))
 preds_fd_wealth <- cbind(xhyp$x[3:4,], as.data.frame(yhyp_fd)[3:4,])
 
-preds_wealth %>% dplyr::select(after_pb, wealthy, pe, lower, upper) %>% 
+preds_wealth %>% dplyr::select(after_pb, medhhinc, pe, lower, upper) %>% 
   mutate(after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB")),
-         wealthy = factor(wealthy, levels = c(1, 0), labels = c("Wealthy area", "Not wealthy area"))) %>% 
-  ggplot(aes(y = pe, ymin = lower, ymax = upper, x = wealthy)) + 
+         medhhinc = factor(medhhinc, levels = wealth_levels, labels = c("Less wealthy area", "More wealthy area"))) %>% 
+  ggplot(aes(y = pe, ymin = lower, ymax = upper, x = medhhinc)) + 
   # geom_segment(aes(xend = Race, y = 0, yend = preds, color = as.factor(after_pb)))+
   geom_pointrange(aes(color = as.factor(after_pb))) +
   labs(title = paste0("By wealth: predicted probability of voting in general election in ", simyear, "\n before and after PB (in a non-PB district)"), 
@@ -458,16 +594,16 @@ ggsave("Paper/Figs/bywealth.pdf", width = 5, height = 4)
 ################################################################################################################################################
 ######################## DISAGGREGATE BY Youth ---------------------
 ### Estimated model
-pb_long <- pb_long %>% mutate(youth = ifelse(age <= 25, 1, 0))
+pb_long <- pb_long %>% mutate(youth = ifelse(age <= 29, 1, 0))
 logit_youth_simcf <- turned_out ~ pb + after_pb*youth + race_B + race_A + race_H + race_U +
   year_2009*youth + year_2010*youth + year_2011*youth + year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth + year_2017*youth +
-  election_p + election_pp + age + I(age_at_vote < 18) + medhhinc + white + (1 | VANID) + (1 | NYCCD)
-lme_youth_simcf <- glmer(logit_youth_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
+  election_p + election_pp + age + I(age^2) + I(age_at_vote < 18) + medhhinc + college + majmatch  + (1 | VANID) + (1 | NYCCD)
+# lme_youth_simcf <- glmer(logit_youth_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 #######################################################################################################################################
 ### Formula for simcf
 logit_youth_form <-  turned_out ~ pb + after_pb*youth + race_B + race_A + race_H + race_U +
   year_2009*youth + year_2010*youth + year_2011*youth + year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth + year_2017*youth +
-  election_p + election_pp + age + I(age_at_vote < 18) + medhhinc + white
+  election_p + election_pp + age + I(age^2) + I(age_at_vote < 18) + medhhinc + college + majmatch
 
 sims <- 10000
 pe <- fixef(lme_youth_simcf)
@@ -491,6 +627,7 @@ for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2016", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2017", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, paste0("year_", simyear), x = 1, xpre = 1, scen = i)
+  xhyp <- cfChange(xhyp, "pb", x = 0, xpre = 0, scen = i)
 }
 
 for (i in (nscen/2+1):nscen){
@@ -502,11 +639,13 @@ for (i in 1:(nscen/2)){
 
 for (i in c(1,3)){
   xhyp <- cfChange(xhyp, "youth", x = 1, xpre = 1, scen = i)
-  xhyp <- cfChange(xhyp, "age_at_vote", x = mean(pb_long$age_at_vote[pb_long$youth == 1 & pb_long$year == 2016 &pb_long$age_at_vote >= 18]), xpre = mean(pb_long$age_at_vote[pb_long$youth == 1 & pb_long$year == 2016 &pb_long$age_at_vote >= 18]), scen = i)
+  xhyp <- cfChange(xhyp, "age", x = 22, xpre = 22, scen = i)
+  xhyp <- cfChange(xhyp, "age_at_vote", x = 20, xpre = 20, scen = i)
 }
 for (i in c(2,4)){
   xhyp <- cfChange(xhyp, "youth", x = 0, xpre = 0, scen = i)
-  xhyp <- cfChange(xhyp, "age", x = mean(pb_long$age_at_vote[pb_long$youth == 0]), xpre = mean(pb_long$age_at_vote[pb_long$youth == 0]), scen = i)
+  xhyp <- cfChange(xhyp, "age", x = mean(pb_long$age[pb_long$youth == 0]), xpre = mean(pb_long$age[pb_long$youth == 0]), scen = i)
+  xhyp <- cfChange(xhyp, "age_at_vote", x = 20, xpre = 20, scen = i)
 }
 
 yhyp <- logitsimev(xhyp, simbetas)
@@ -542,7 +681,7 @@ preds_youth %>% dplyr::select(after_pb, youth, pe, lower, upper) %>%
        x = "", y = "Predicted probability of Voting", color = "") +
   coord_flip() +
   theme_minimal()
-ggsave("Paper/Figs/byyouth.pdf", width = 5, height = 4)
+#ggsave("Paper/Figs/byyouth.pdf", width = 5, height = 4)
 
 ######################## DISAGGREGATE BY Youth - ONLY 18+ ---------------------
 # See scratchpad - reran these models for only elections 2011 on, this made the differential effect for youth disappear.  Suspicion that the fact that youth didn't vote in 2008 may be driving the apparent greater impact of PB
@@ -550,13 +689,13 @@ ggsave("Paper/Figs/byyouth.pdf", width = 5, height = 4)
 pb_long_18p <- pb_long %>% mutate(youth = ifelse(age <= 29, 1, 0)) %>%  filter(age_at_vote >= 18)
 logit_youth18p_simcf <- turned_out ~ pb + after_pb*youth + race_B + race_A + race_H + race_U +
   year_2009*youth + year_2010*youth + year_2011*youth + year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth + year_2017*youth +
-  election_p + election_pp + age + medhhinc + white + (1 | VANID) + (1 | NYCCD)
+  election_p + election_pp + age + medhhinc + white + majmatch  + (1 | VANID) + (1 | NYCCD)
 lme_youth18p_simcf <- glmer(logit_youth18p_simcf, data = pb_long_18p, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 #######################################################################################################################################
 ### Formula for simcf
 logit_youth18p_form <-   turned_out ~ pb + after_pb*youth + race_B + race_A + race_H + race_U +
   year_2009*youth + year_2010*youth + year_2011*youth + year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth + year_2017*youth +
-  election_p + election_pp + age + medhhinc + white
+  election_p + election_pp + age + medhhinc + white + majmatch
 
 sims <- 10000
 pe <- fixef(lme_youth18p_simcf)
@@ -579,6 +718,7 @@ for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2016", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2017", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, paste0("year_", simyear), x = 1, xpre = 1, scen = i)
+  xhyp <- cfChange(xhyp, "pb", x = 0, xpre = 0, scen = i)
 }
 
 for (i in (nscen/2+1):nscen){
@@ -657,19 +797,24 @@ preds_fd_educ$level <- c("More college degrees", "Fewer college degrees")
 preds_fd_youth$group <- "Youth"
 preds_fd_youth$level <- c("Under 30", "30 and older")
 
-preds_fd_plot <- bind_rows(preds_fd_race, preds_fd_gender, preds_fd_wealth, preds_fd_youth, preds_fd_educ)
+preds_fd_majmatch$group <- "Majority Race"
+preds_fd_majmatch$level <- c("Majority race", "Not Majority race")
+
+
+
+preds_fd_plot <- bind_rows(preds_fd_race, preds_fd_gender, preds_fd_wealth, preds_fd_youth, preds_fd_educ, preds_fd_majmatch)
 
 ggplot(preds_fd_plot, aes(x = group, y = pe, ymin = lower, ymax =upper, color = group, group = level)) +
   geom_pointrange(position = position_dodge(width = .6)) +
   geom_text(aes(y = -0.0025, label = level), hjust = 1, position = position_dodge(width = .6), size = 3) +
   geom_hline(aes(yintercept = 0)) +
   labs(x = "", y = "Change in predicted probability of voting") +
-  ylim(-.075,.23) +
+  ylim(-.075,.275) +
   coord_flip() +
   theme_minimal() +
   theme(legend.position = "none", 
         axis.title = element_text(size = 11))
-ggsave("Paper/Figs/group_fds.pdf", width = 6.5, height = 5)
+ggsave("Paper/Figs/group_fds.pdf", width = 6.5, height = 5.5)
 
 ### Predictions for 2017 --------------------------------------------------------------------------------------------------------
 
@@ -688,8 +833,11 @@ for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "age", x = mean(pb_long$age), xpre = mean(pb_long$age), scen = i)
   xhyp <- cfChange(xhyp, "medhhinc", x = mean(pb_long$medhhinc), xpre = mean(pb_long$medhhinc), scen = i)
   xhyp <- cfChange(xhyp, "white", x = mean(pb_long$white), xpre = mean(pb_long$white), scen = i)
+  xhyp <- cfChange(xhyp, "majmatch", x = mean(pb_long$majmatch), xpre = mean(pb_long$majmatch), scen = i)
   xhyp <- cfChange(xhyp, paste0("year_", simyear), x = 1, xpre = 1, scen = i)
   xhyp <- cfChange(xhyp, "age_at_vote", x = mean(pb_long$age_at_vote), xpre = mean(pb_long$age_at_vote), scen = i)
+  xhyp <- cfChange(xhyp, "Female", x = mean(pb_long$Female), xpre = mean(pb_long$Female), scen = i)
+  xhyp <- cfChange(xhyp, "college", x = mean(pb_long$college), xpre = mean(pb_long$college), scen = i)
 }
 for (i in (nscen/2+1):nscen){
   xhyp <- cfChange(xhyp, "after_pb", x = 1, xpre = 0, scen = i)
@@ -717,6 +865,52 @@ yhyp_fd <- logitsimfd(xhyp, simbetas)
 
 preds_fd_race <-  cbind(xhyp$x[6:10,], as.data.frame(yhyp_fd)[6:10,]) %>% 
   mutate(Race = rep(c("W", "B", "H", "A", "U"), 1)) 
+
+## Majority match
+
+pe <- fixef(lme_majmatch_simcf)
+vc <- vcov(lme_majmatch_simcf) 
+simbetas <- mvrnorm(sims, pe, vc)
+
+nscen <- length(unique(pb_long$majmatch))*2
+xhyp <- cfMake(logit_majmatch_form, pb_long, nscen = nscen, f = "mean")
+
+for (i in 1:nscen){
+  xhyp <- cfChange(xhyp, "year_2008", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "year_2009", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "year_2010", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "year_2011", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "year_2012", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "year_2013", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "year_2014", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "year_2015", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "year_2016", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "year_2017", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, paste0("year_", simyear), x = 1, xpre = 1, scen = i)
+  xhyp <- cfChange(xhyp, "pb", x = 0, xpre = 0, scen = i)
+}
+
+for (i in (nscen/2+1):nscen){
+  xhyp <- cfChange(xhyp, "after_pb", x = 1, xpre = 0, scen = i)
+}
+for (i in 1:(nscen/2)){
+  xhyp <- cfChange(xhyp, "after_pb", x = 0, xpre = 0, scen = i)
+}
+
+for (i in c(1,3)){
+  xhyp <- cfChange(xhyp, "majmatch", x = 1, xpre = 1, scen = i)
+}
+for (i in c(2,4)){
+  xhyp <- cfChange(xhyp, "majmatch", x = 0, xpre = 0, scen = i)
+}
+
+yhyp <- logitsimev(xhyp, simbetas)
+
+yhyp_fd <- logitsimfd(xhyp, simbetas)
+
+preds_majmatch <-  cbind(xhyp$x, as.data.frame(yhyp))
+
+preds_fd_majmatch <- cbind(xhyp$x[3:4,], as.data.frame(yhyp_fd)[3:4,] )
 
 ## Gender
 
@@ -767,14 +961,13 @@ preds_fd_gender <- cbind(xhyp$x[3:4,], as.data.frame(yhyp_fd)[3:4,] )
 
 ## well educ
 
-
+sims <- 10000
 pe <- fixef(lme_educ_simcf)
 vc <- vcov(lme_educ_simcf) 
 simbetas <- mvrnorm(sims, pe, vc)
 
-nscen <- length(unique(pb_long$well_educ))*2
+nscen <- length(educ_levels)*2
 xhyp <- cfMake(logit_educ_form, pb_long, nscen = nscen, f = "mean")
-
 
 for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2008", x = 0, xpre = 0, scen = i)
@@ -788,6 +981,7 @@ for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2016", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2017", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, paste0("year_", simyear), x = 1, xpre = 1, scen = i)
+  xhyp <- cfChange(xhyp, "pb", x = 0, xpre = 0, scen = i)
 }
 
 for (i in (nscen/2+1):nscen){
@@ -798,10 +992,10 @@ for (i in 1:(nscen/2)){
 }
 
 for (i in c(1,3)){
-  xhyp <- cfChange(xhyp, "well_educ", x = 1, xpre = 1, scen = i)
+  xhyp <- cfChange(xhyp, "college", x = educ_levels["high"], xpre = educ_levels["high"], scen = i)
 }
 for (i in c(2,4)){
-  xhyp <- cfChange(xhyp, "well_educ", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "college", x = educ_levels["low"], xpre = educ_levels["low"], scen = i)
 }
 
 yhyp <- logitsimev(xhyp, simbetas)
@@ -816,9 +1010,8 @@ pe <- fixef(lme_wealth_simcf)
 vc <- vcov(lme_wealth_simcf) 
 simbetas <- mvrnorm(sims, pe, vc)
 
-nscen <- length(unique(pb_long$wealthy))*2
+nscen <- length(wealth_levels)*2
 xhyp <- cfMake(logit_wealth_form, pb_long, nscen = nscen, f = "mean")
-
 
 for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2008", x = 0, xpre = 0, scen = i)
@@ -832,6 +1025,8 @@ for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2016", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2017", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, paste0("year_", simyear), x = 1, xpre = 1, scen = i)
+  xhyp <- cfChange(xhyp, "pb", x = 0, xpre = 0, scen = i)
+  
 }
 
 for (i in (nscen/2+1):nscen){
@@ -842,10 +1037,10 @@ for (i in 1:(nscen/2)){
 }
 
 for (i in c(1,3)){
-  xhyp <- cfChange(xhyp, "wealthy", x = 1, xpre = 1, scen = i)
+  xhyp <- cfChange(xhyp, "medhhinc", x = wealth_levels["more wealthy"], xpre = wealth_levels["more wealthy"], scen = i)
 }
 for (i in c(2,4)){
-  xhyp <- cfChange(xhyp, "wealthy", x = 0, xpre = 0, scen = i)
+  xhyp <- cfChange(xhyp, "medhhinc", x = wealth_levels["less wealthy"], xpre = wealth_levels["less wealthy"], scen = i)
 }
 
 yhyp <- logitsimev(xhyp, simbetas)
@@ -857,13 +1052,13 @@ preds_fd_wealth <- cbind(xhyp$x[3:4,], as.data.frame(yhyp_fd)[3:4,])
 
 ### youth
 
+
 pe <- fixef(lme_youth_simcf)
 vc <- vcov(lme_youth_simcf) 
 simbetas <- mvrnorm(sims, pe, vc)
 
 nscen <- length(unique(pb_long$youth))*2
 xhyp <- cfMake(logit_youth_form, pb_long, nscen = nscen, f = "mean")
-
 
 for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2008", x = 0, xpre = 0, scen = i)
@@ -877,6 +1072,7 @@ for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2016", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2017", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, paste0("year_", simyear), x = 1, xpre = 1, scen = i)
+  xhyp <- cfChange(xhyp, "pb", x = 0, xpre = 0, scen = i)
 }
 
 for (i in (nscen/2+1):nscen){
@@ -888,11 +1084,13 @@ for (i in 1:(nscen/2)){
 
 for (i in c(1,3)){
   xhyp <- cfChange(xhyp, "youth", x = 1, xpre = 1, scen = i)
-  xhyp <- cfChange(xhyp, "age_at_vote", x = mean(pb_long$age_at_vote[pb_long$youth == 1 & pb_long$year == 2016 &pb_long$age_at_vote >= 18]), xpre = mean(pb_long$age_at_vote[pb_long$youth == 1 & pb_long$year == 2016 &pb_long$age_at_vote >= 18]), scen = i)
+  xhyp <- cfChange(xhyp, "age", x = 22, xpre = 22, scen = i)
+  xhyp <- cfChange(xhyp, "age_at_vote", x = 20, xpre = 20, scen = i)
 }
 for (i in c(2,4)){
   xhyp <- cfChange(xhyp, "youth", x = 0, xpre = 0, scen = i)
-  xhyp <- cfChange(xhyp, "age", x = mean(pb_long$age_at_vote[pb_long$youth == 0]), xpre = mean(pb_long$age_at_vote[pb_long$youth == 0]), scen = i)
+  xhyp <- cfChange(xhyp, "age", x = mean(pb_long$age[pb_long$youth == 0]), xpre = mean(pb_long$age[pb_long$youth == 0]), scen = i)
+  xhyp <- cfChange(xhyp, "age_at_vote", x = 20, xpre = 20, scen = i)
 }
 
 yhyp <- logitsimev(xhyp, simbetas)
@@ -923,25 +1121,31 @@ preds_fd_educ$level <- c("More college degrees", "Fewer college degrees")
 preds_fd_youth$group <- "Youth"
 preds_fd_youth$level <- c("25 and under", "Older than 25")
 
-preds_fd_plot <- bind_rows(preds_fd_race, preds_fd_gender, preds_fd_wealth, preds_fd_youth, preds_fd_educ)
+
+preds_fd_majmatch$group <- "Majority Race"
+preds_fd_majmatch$level <- c("Majority race", "Not Majority race")
+
+preds_fd_plot <- bind_rows(preds_fd_race, preds_fd_gender, preds_fd_wealth, preds_fd_youth, preds_fd_educ, preds_fd_majmatch)
+
 
 ggplot(preds_fd_plot, aes(x = group, y = pe, ymin = lower, ymax =upper, color = group, group = level)) +
   geom_pointrange(position = position_dodge(width = .6)) +
   geom_text(aes(y = -0.0025, label = level), hjust = 1, position = position_dodge(width = .6), size = 3) +
   geom_hline(aes(yintercept = 0)) +
   labs(x = "", y = "Change in predicted probability of voting in 2017 for \nnon-PB voters after hypothetical participation in PB") +
-  ylim(-.075,.33) +
+  ylim(-.075,.35) +
   coord_flip() +
   theme_minimal() +
   theme(legend.position = "none")
-ggsave("Paper/Figs/group_fds_2017.pdf", width = 6.5, height = 5)
+ggsave("Paper/Figs/group_fds_2017.pdf", width = 6.5, height = 5.5)
 
 
 ### Fit statistics for each ------------------------------------------------------------------------------------
 library(stargazer)
+library(texreg)
 
 
 stargazer(lme_base_simcf, lme_race_simcf, lme_gender_simcf, lme_educ_simcf, lme_wealth_simcf, lme_youth_simcf)
-texreg(list(lme_base_simcf, lme_race_simcf, lme_gender_simcf, lme_educ_simcf, lme_wealth_simcf, lme_youth_simcf), 
+texreg(list(lme_base_simcf, lme_race_simcf, lme_majmatch_simcf, lme_gender_simcf, lme_educ_simcf, lme_wealth_simcf, lme_youth_simcf), 
        file = "Paper_text/Tables/subgroups.tex",
        single.row = TRUE)
