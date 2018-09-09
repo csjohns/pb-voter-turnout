@@ -17,10 +17,10 @@ source("dbDownload.R")
 stringNAs <- function(x){
   ifelse(x, "", NA)
 }
-
-conv19c <- function(s, ft = "%m/%d/%y"){
-  as.Date(format(as.Date(s,format=ft), "19%y%m%d"), "%Y%m%d")
-}
+# 
+# conv19c <- function(s, ft = "%m/%d/%y"){
+#   as.Date(format(as.Date(s,format=ft), "19%y%m%d"), "%Y%m%d")
+# }
 ### Load PB data ### -------------------------------------------------------------------------------------
 
 pb <- dbDownload(table = "pb", username = username, password = password, dbname = db.name, host = hostname, port = port)
@@ -31,20 +31,18 @@ rm(password, username, hostname, db.name, port) # if you want to remove the cred
 pb <- pb %>% select(-DWID) %>% 
   filter(DoR != "" & !is.na(DoR)) %>% 
   mutate_at(vars(starts_with("pb_2")), replace_na, 0) # this line is to deal with the fact taht the row appended dist 23 voters (who didn't otherwise exist)
-pb <- pb %>% mutate(DoB = conv19c(DoB),
+pb <- pb %>% mutate(DoB = mdy(DoB),
                     pb = 1)
 
 # limit to only 23/39 and 2016 districts
 pbnyc <- read.csv(file = "pbnyc_district_votes.csv", as.is = TRUE)
 pb2016 <- pbnyc %>% filter(districtCycle == 1 & voteYear == 2016) 
-rm(pbnyc)
 
 ### Load full voterfile data ### -------------------------------------------------------------------------------------
 ### Limit it to only non-PB districts and VANIDS
 
-
-load("pbdistricts.Rdata")
-pbdistricts <- na.omit(pbdistricts)
+pbdistricts <- unique(pbnyc$district)
+rm(pbnyc)
 
 ## loading full voter file
 voterfile <- fread("PersonFile20180426-11056504994/PersonFile20180426-11056504994.txt")
