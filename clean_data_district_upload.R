@@ -13,31 +13,45 @@ pb_local <- pb_imputed #copy pb_imputed to modify
 
 # then download current version from server:
 
-source("credentials.R") # loads the access credentials
-source("dbDownload.R")
+# source("credentials.R") # loads the access credentials
+# source("dbDownload.R")
+
+
 
 ### Load PB data ### -------------------------------------------------------------------------------------
 
-pb <- dbDownload(table = "pb", username = username, password = password, dbname = db.name, host = hostname, port = port)
-rm(password, username, hostname, db.name, port) # if you want to remove the credentials from your environment
+# pb_old <- dbDownload(table = "pb", username = username, password = password, dbname = db.name, host = hostname, port = port)
+# rm(password, username, hostname, db.name, port) # if you want to remove the credentials from your environment
+
+pb_old <- read.csv("backup/pb_download_9-8-18.csv", as.is = TRUE)
+dim(pb_old)
+table(pb_old$p_2017)
 
 # votes2017 <- pb %>% select(VANID, ends_with("_2017"))
 
-pb_local <- pb %>%
-  select(-pbdistrict) %>% 
+pb_local <- pb_old %>%
+  select(VANID, ends_with("_2017")) %>% #head()
   left_join(pb_local, .)
 
-all.equal(sort(names(pb)), sort(names(pb_local)))
+all.equal(pb_old$p_2017, pb_local$p_2017)
+all.equal(pb_old$g_2017, pb_local$g_2017)
 
-all.equal(pb$VANID, pb_local$VANID)
-all.equal(pb$pb_2016, pb_local$pb_2016)
-all.equal(pb$CensusTract, pb_local$CensusTract)
-all.equal(pb$DoB, pb_local$DoB)
+all.equal(sort(names(pb_old)), sort(names(pb_local)))
+
+all.equal(pb_old$VANID, pb_local$VANID)
+all.equal(pb_old$pb_2016, pb_local$pb_2016)
+all.equal(pb_old$CensusTract, pb_local$CensusTract)
+all.equal(pb_old$DoB, pb_local$DoB)
+head(pb_old$DoB)
+head(pb_local$DoB)
+
+table(pb_local$p_2017, useNA = 'ifany')
+table(pb_local$g_2017, useNA = 'ifany')
 
 ## keeping the regenerated file as original because it has the more accurate DoBs (left join pb to pb_local)
 
 # backup the server file just in case
-write.csv(pb, "backup/pb_download_9-8-18.csv", row.names = FALSE)
+#write.csv(pb, "backup/pb_download_9-8-18.csv", row.names = FALSE)
 
 
 ### Write updated data to server
