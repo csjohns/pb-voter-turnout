@@ -49,6 +49,8 @@ pbdistricts <- na.omit(pbdistricts)
 ## loading full voter file
 voterfile <- fread("PersonFile20180426-11056504994/PersonFile20180426-11056504994.txt")
 
+# voterfiles <- fread("PersonFile20180426-11056504994.txt")
+
 ## filtering voterfile to only actual registered non-pb voters and 
 voterfile <- voterfile[!CityCouncilName %in% pbdistricts & !`Voter File VANID` %in% pb$VANID & !is.na(CityCouncilName) & RegistrationStatusName != "Applicant"]
 

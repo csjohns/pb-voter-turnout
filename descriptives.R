@@ -68,8 +68,6 @@ voterfile <- voterfile %>%
 
 # Total registered voters == 4,946,176
 
-
-
 #### Turnout Registered Voters ####
 
 ## All NYC
@@ -210,10 +208,10 @@ p_age <- ggplot(subset(voterfile, NYCCD %in% pbsampledists),
   theme(strip.text.y = element_blank())
 
 ## College degree
-
+##### still working here ####
 p_college <- ggplot(subset(voterfile, NYCCD %in% pbsampledists), 
-                    aes(x = college/100, group = NYCCD)) +
-  geom_histogram(bins = 15) +
+                    aes(x = college/100, group = interaction(NYCCD, Sex))) +
+  geom_histogram(aes(fill = Sex), bins = 15) +
   facet_grid(NYCCD ~ .) +
   labs(x = "College degree, tract (%)",
        y = "",
@@ -223,6 +221,7 @@ p_college <- ggplot(subset(voterfile, NYCCD %in% pbsampledists),
   theme(strip.text.y = element_blank(),
         axis.text.y = element_blank())
 
+p_college
 ## Household Income
 
 p_hhinc <- ggplot(subset(voterfile, NYCCD %in% pbsampledists), 
