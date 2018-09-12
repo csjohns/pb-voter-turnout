@@ -17,10 +17,10 @@ source("dbDownload.R")
 stringNAs <- function(x){
   ifelse(x, "", NA)
 }
-
-conv19c <- function(s, ft = "%m/%d/%y"){
-  as.Date(format(as.Date(s,format=ft), "19%y%m%d"), "%Y%m%d")
-}
+# 
+# conv19c <- function(s, ft = "%m/%d/%y"){
+#   as.Date(format(as.Date(s,format=ft), "19%y%m%d"), "%Y%m%d")
+# }
 ### Load PB data ### -------------------------------------------------------------------------------------
 
 pb <- dbDownload(table = "pb", username = username, password = password, dbname = db.name, host = hostname, port = port)
@@ -31,20 +31,18 @@ rm(password, username, hostname, db.name, port) # if you want to remove the cred
 pb <- pb %>% select(-DWID) %>% 
   filter(DoR != "" & !is.na(DoR)) %>% 
   mutate_at(vars(starts_with("pb_2")), replace_na, 0) # this line is to deal with the fact taht the row appended dist 23 voters (who didn't otherwise exist)
-pb <- pb %>% mutate(DoB = conv19c(DoB),
+pb <- pb %>% mutate(DoB = mdy(DoB),
                     pb = 1)
 
 # limit to only 23/39 and 2016 districts
 pbnyc <- read.csv(file = "pbnyc_district_votes.csv", as.is = TRUE)
 pb2016 <- pbnyc %>% filter(districtCycle == 1 & voteYear == 2016) 
-rm(pbnyc)
 
 ### Load full voterfile data ### -------------------------------------------------------------------------------------
 ### Limit it to only non-PB districts and VANIDS
 
-
-load("pbdistricts.Rdata")
-pbdistricts <- na.omit(pbdistricts)
+pbdistricts <- unique(pbnyc$district)
+rm(pbnyc)
 
 ## loading full voter file
 voterfile <- fread("PersonFile20180426-11056504994/PersonFile20180426-11056504994.txt")
@@ -119,8 +117,8 @@ voterfile <- voterfile  %>%
     group_by()
   
 ### Including census data ### ----------------------------------------------------------------------------------------------------------------------------
-  #source("censustables.R")
-  load("census.Rdata")
+  source("censustables.R")
+  # load("census.Rdata")
   voterfile <- voterfile %>% filter(County %in% c("BRONX", "KINGS", "NEW YORK", "QUEENS", "RICHMOND")) %>% 
     mutate(countycode = recode(County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085"),
            tract = paste0(countycode, str_pad(CensusTract, 6, "left", "0")))
@@ -172,7 +170,7 @@ voterfile <- voterfile %>%
     mutate(agegroup = cut(age, breaks = c(0, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60,65, 70,75, 80,85, 90, Inf))) %>% 
     select(VANID, pb, Race, agegroup, Sex, 
            g_early, g_2008, g_2009, g_2010, g_2011, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
-           white, college, medhhinc 
+           white, college, medhhinc , majmatch 
            , starts_with("comp")
            # ,g_2014_comp, g_2016_comp, p_2014_comp, pp_2016_comp
            ) %>% 
@@ -240,13 +238,13 @@ df_cutpoints <- list(
       left_join(voterfile) %>% 
       rename(comp_g_2016 = g_2016_comp, comp_g_2014 = g_2014_comp, comp_p_2014 = p_2014_comp, comp_pp_2016 = pp_2016_comp) 
     
-    vf_analysis %>% filter(pb == 1) %>% select(Race, Sex, medhhinc, college, white, g_early, p_early, age) %>% summary()
-    vf_analysis %>% filter(pb == 0) %>% select(Race, Sex, medhhinc, college, white, g_early, p_early, age)  %>% summary()
+    vf_analysis %>% filter(pb == 1) %>% select(Race, Sex, medhhinc, college, white, g_early, p_early, age, majmatch) %>% summary()
+    vf_analysis %>% filter(pb == 0) %>% select(Race, Sex, medhhinc, college, white, g_early, p_early, age, majmatch)  %>% summary()
     
     rm(voterfile)
     gc()
 
 #### Saving matched datafile as R object for future use  --------------------------------------------------------------------------------
-save(vf_analysis, c.match.jenks, c.match.jenks3, file = "vf_analysis.Rdata")
+save(vf_analysis, file = "vf_analysis.Rdata")
 
     

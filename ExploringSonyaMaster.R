@@ -1,3 +1,14 @@
+########################################################################################################################
+#### This is the file that takes Sonya's bulk output from VAN of the full voter data (the 'people' tab of the .xlsx file) 
+###  and processes it to create the normally structured PB table that is used in analyses
+###  
+###  The file was created in January 2018.  
+###  Following new data provided in Mar 2018 (District 23) run the addingnew23files.R after this file before uploading data to server
+###  
+###  Sept. 2018 - addingnew23files.R also refines the process for imputing  missing districts
+###
+########################################################################################################################
+
 library(RColorBrewer)
 library(dplyr)
 library(tidyr)
