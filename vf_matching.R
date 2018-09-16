@@ -94,7 +94,7 @@ voterfile <- voterfile  %>%
   ## this code works by basically appending the voters from the districts of interest to the non-pb voterfile
   
   voterfile <- pb %>% 
-    filter(pbdistrict %in% c(23, 39, pb2016$district)) %>% ## this is filtering to only districts we have full/near full data for
+    filter(pbdistrict %in% c(23, 39, pb2016$district) | pb_2012 == 1) %>% ## this is filtering to only districts we have full/near full data for
     bind_rows(voterfile)
     
   ## recoding vote tallies to a binary voted/not voted indicator
@@ -130,6 +130,8 @@ voterfile <- voterfile  %>%
   ## Add indicator for if voter's race matches majority race of tract
   voterfile <- voterfile %>% 
     mutate(majmatch = Race == majority)
+  
+  ##7640 PB voters in the voter file
   
 ### Including competitiveness ----------------------------------------------------------------------
 load("compet.Rdata")  
@@ -174,6 +176,7 @@ voterfile <- voterfile %>%
            ) %>% 
     na.omit()
   
+  
 ### Implementing CEM - defining cutpoints for continuous variables  --------------------------------------------------------------------------------
   
 df_cutpoints <- list(
@@ -195,8 +198,9 @@ df_cutpoints <- list(
            Sex = as.factor(Sex)) %>% 
     cem(treatment = "pb", data = .,  
         grouping = list(
-          g_early = list("0",c("1,2"), c("3", "4", "5"), c("6", "7,", "8")), 
-          p_early = list("0",c("1,2"), c("3", "4", "5"), c("6", "7,", "8"))), 
+          g_early = list("0",c("1,2"), c("3", "4"), c("5", "6"), c("7,", "8")), 
+          p_early = list("0",c("1,2"),  c("3", "4"), c("5", "6"), c("7,", "8"))
+          ), 
         cutpoints = df_cutpoints,
         verbose = 1) ### DON'T USE K2K - TOO MUCH MEMORY DEMAND. RANDOMLY DRAW FROM STRATA AFTER THE FACT
 

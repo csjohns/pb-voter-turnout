@@ -22,8 +22,9 @@ c.out <- matching_df %>% select(-VANID, -college) %>%
          Sex = as.factor(Sex)) %>% 
   cem(treatment = "pb", data = .,  
       grouping = list(
-        g_early = list("0",c("1,2"), c("3", "4", "5"), c("6", "7,", "8")), 
-        p_early = list("0",c("1,2"), c("3", "4", "5"), c("6", "7,", "8"))), 
+        g_early = list("0",c("1,2"), c("3", "4"), c("5", "6"), c("7,", "8")), 
+        p_early = list("0",c("1,2"),  c("3", "4"), c("5", "6"), c("7,", "8"))
+      ), 
       cutpoints = df_cutpoints,
       verbose = 1) ### DON'T USE K2K - TOO MUCH MEMORY DEMAND. RANDOMLY DRAW FROM STRATA AFTER THE FACT
 
@@ -67,6 +68,15 @@ c.base_majmatch <- c.match
 # Unmatched 1058862 2392
 # 3811/6203  0.6143801 - 0.499214 from original
 
+# 9-8 post cleain
+#               G0   G1
+# All       1126750 6158
+# Matched    188131 3634
+# Unmatched  938619 2524
+# .5901 from matching df, .4757 from original
+
+
+
 ####  Base with college added back in ------------------------------------------------------------------
 rm(c.match, c.out)
 
@@ -89,8 +99,9 @@ c.out <- matching_df %>% select(-VANID) %>%
          Sex = as.factor(Sex)) %>% 
   cem(treatment = "pb", data = .,  
       grouping = list(
-        g_early = list("0",c("1,2"), c("3", "4", "5"), c("6", "7,", "8")), 
-        p_early = list("0",c("1,2"), c("3", "4", "5"), c("6", "7,", "8"))), 
+        g_early = list("0",c("1,2"), c("3", "4"), c("5", "6"), c("7,", "8")), 
+        p_early = list("0",c("1,2"),  c("3", "4"), c("5", "6"), c("7,", "8"))
+      ), 
       cutpoints = df_cutpoints,
       verbose = 1) ### DON'T USE K2K - TOO MUCH MEMORY DEMAND. RANDOMLY DRAW FROM STRATA AFTER THE FACT
 
@@ -132,6 +143,13 @@ c.college <- c.match
 # Matched    179983 3628
 # Unmatched 1102129 2575
 # 0.5848783 match [1] 0.4752423 from original
+
+# after clean up
+# G0   G1
+# All       1126750 6158
+# Matched    152216 3425
+# Unmatched  974534 2733
+# .5562 from matching, .4483 from original
 
 
 ####  more granular  ------------------------------------------------------------------
@@ -198,4 +216,131 @@ c.granular <- c.match
 # Unmatched 1108342 2874
 # .5366758 matched - 0.4360755 from original
 
+### after adjusting districts etc:
+# 
+# G0   G1
+# All       1126750 6158
+# Matched    148588 3199
+# Unmatched  978162 2959
+# .5195 matched, .4187 from original 7640
+
 save(voterfile, c.granular, c.college, c.base_majmatch, file = "matchcompare.RData")
+
+#### Comparing estimates from the differently specified matches ------------------------------------------------------------------
+library(broom)
+library(ggplot2)
+source("create_pb_long.R")
+
+fit_lme <- function(formula, df, name) {
+  res <-  glmer(formula, data = df, family = binomial(), nAGQ = 0) 
+  out <- tidy(res) %>% 
+    mutate(source = name)
+  pcp <- sum(diag(table(res@resp$y, as.numeric(fitted(res)>=.5))))/nrow(df)
+  out$pcp <- pcp
+  out
+}
+
+load("matchcompare.RData")
+
+vf_analysis_base <- c.base_majmatch %>% dplyr::select(-n_treat, -n_control) %>% 
+  left_join(voterfile) %>% 
+  rename(comp_g_2016 = g_2016_comp, comp_g_2014 = g_2014_comp, comp_p_2014 = p_2014_comp, comp_pp_2016 = pp_2016_comp) 
+
+vf_analysis_college <- c.college %>% dplyr::select(-n_treat, -n_control) %>% 
+  left_join(voterfile) %>% 
+  rename(comp_g_2016 = g_2016_comp, comp_g_2014 = g_2014_comp, comp_p_2014 = p_2014_comp, comp_pp_2016 = pp_2016_comp) 
+
+vf_analysis_granular <- c.granular %>% dplyr::select(-n_treat, -n_control) %>% 
+  left_join(voterfile) %>% 
+  rename(comp_g_2016 = g_2016_comp, comp_g_2014 = g_2014_comp, comp_p_2014 = p_2014_comp, comp_pp_2016 = pp_2016_comp) 
+
+rm(voterfile)
+
+pb_long_base <- create_pb_long(vf_analysis_base)
+pb_long_college <- create_pb_long(vf_analysis_college)
+pb_long_granular <- create_pb_long(vf_analysis_granular)
+
+model_form <- turned_out ~ pb + after_pb + Race + Sex + as.factor(year) + election_type + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + white + college_pct + majmatch + (1 | VANID) + (1|NYCCD)
+base <- fit_lme(model_form, pb_long_base, "base")
+college <- fit_lme(model_form, pb_long_college, "college")
+granular <- fit_lme(model_form, pb_long_granular, "granular")
+
+all <- bind_rows(base, college, granular)
+all %>% group_by(source) %>% summarize(pcp = mean(pcp))
+
+ggplot(all) + 
+  geom_pointrange(aes(x = term, 
+                      y = estimate, 
+                      ymin = estimate - 1.96*std.error, 
+                      ymax = estimate + 1.96*std.error, 
+                      color = source),
+                  position = position_dodge(width = 1)) +
+  ylim(-2,2) +
+  coord_flip()+
+  theme_minimal()
+
+## The result of these investigations is a pretty resounding statement that the granularity of the match is not significant
+## - estimates are pretty robustly consistent across the specifications of the match.
+
+race_form <- turned_out ~ pb + after_pb + Race*after_pb + Sex + as.factor(year)*Race + election_type + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + white + college_pct + majmatch + (1 | VANID) + (1|NYCCD)
+base_race <- fit_lme(race_form, pb_long_base, "base")
+college_race <- fit_lme(race_form, pb_long_college, "college")
+granular_race <- fit_lme(race_form, pb_long_granular, "granular")
+
+all_race <- bind_rows(base_race, college_race, granular_race)
+all_race %>% group_by(source) %>% summarize(pcp = mean(pcp))
+
+ggplot(all_race) + 
+  geom_pointrange(aes(x = term, 
+                      y = estimate, 
+                      ymin = estimate - 1.96*std.error, 
+                      ymax = estimate + 1.96*std.error, 
+                      color = source),
+                  position = position_dodge(width = 1)) +
+  ylim(-3,3) +
+  coord_flip()+
+  theme_minimal()
+
+
+ggplot(all_race) + 
+  geom_pointrange(aes(x = term, 
+                      y = estimate, 
+                      ymin = estimate - 1.96*std.error, 
+                      ymax = estimate + 1.96*std.error, 
+                      color = source),
+                  position = position_dodge(width = 1)) +
+  ylim(-3,3) +
+  coord_flip()+
+  theme_minimal()
+
+#####
+educ_form <- turned_out ~ pb + after_pb + college_pct*after_pb + Race + Sex + as.factor(year)*college_pct + election_type + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + white + college_pct + majmatch + (1 | VANID) + (1|NYCCD)
+base_educ <- fit_lme(educ_form, pb_long_base, "base")
+college_educ <- fit_lme(educ_form, pb_long_college, "college")
+granular_educ <- fit_lme(educ_form, pb_long_granular, "granular")
+
+all_educ <- bind_rows(base_educ, college_educ, granular_educ)
+all_educ %>% group_by(source) %>% summarize(pcp = mean(pcp))
+
+ggplot(all_educ) + 
+  geom_pointrange(aes(x = term, 
+                      y = estimate, 
+                      ymin = estimate - 1.96*std.error, 
+                      ymax = estimate + 1.96*std.error, 
+                      color = source),
+                  position = position_dodge(width = 1)) +
+  ylim(-3,3) +
+  coord_flip()+
+  theme_minimal()
+
+
+ggplot(all_race) + 
+  geom_pointrange(aes(x = term, 
+                      y = estimate, 
+                      ymin = estimate - 1.96*std.error, 
+                      ymax = estimate + 1.96*std.error, 
+                      color = source),
+                  position = position_dodge(width = 1)) +
+  ylim(-3,3) +
+  coord_flip()+
+  theme_minimal()
