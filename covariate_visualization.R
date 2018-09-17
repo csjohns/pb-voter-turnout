@@ -99,9 +99,27 @@ p <- pb_long %>% mutate(turned_out = factor(turned_out, levels = c(0, 1), labels
 ggplotly(p)
 
 pb_long %>%
+  ma
   group_by(year, election_type,race, after_pb, pb) %>% 
   summarize(nvoters = n(),
             turnout = sum(turned_out, na.rm = T)/n()) %>% 
   filter(year == 2016, election_type == "g")
 
 
+#### Plots confirming that the really high demonstrated predicted probabilities of voting are because of the high mean
+#### rates of everything else
+
+  pb_longrace <- pb_long 
+  pb_longrace$predicted <- predict(lme_race_simcf, pb_long, type = "response")
+  
+  ggplot(pb_long, aes(x = Race, y = college_pct)) +geom_boxplot()
+  
+  pb_longrace %>% filter(year == 2016 & election_type == "g") %>% 
+    group_by(Race, pb, after_pb) %>% 
+    summarize(yhat = mean(predicted))
+  
+  pb_longrace %>% filter(year == 2016 & election_type == "g" & college_pct >= mean(pb_long$college_pct)) %>% 
+    ggplot(aes(x = Race, y = predicted, color = as.factor(after_pb))) +
+    geom_boxplot() +
+    facet_wrap(~majmatch)
+  
