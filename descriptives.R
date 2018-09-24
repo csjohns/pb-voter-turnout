@@ -286,15 +286,15 @@ p_turnout <- ggplot(subset(turnout, Office != "Off Year"),
   theme_minimal() +
   theme(strip.placement = "outside",
         legend.margin = margin(r = 0.1, l = 0.01),
-        axis.title.y.right = element_text(size = 9),
-        plot.margin = margin(r = 0.4, l = 0.4, t = 0.1, b = 0.1)) +
+        axis.title.y.right = element_text(size = 9)) +
   scale_x_date(date_labels = "%y") +
   scale_y_continuous(position = "right")
 
-pdf(file = "turnout.pdf", height = 4, width = 4)
+pdf(file = "turnout.pdf", height = 4, width = 4.5)
 p_turnout
 dev.off()
 
+#plot.margin = margin(r = 0.4, l = 0.4, t = 0.1, b = 0.1) taken from above plot from pre-sizing adjustments
 
 #### Demographics #####
 
@@ -348,7 +348,7 @@ p3 <- ggplot(pb, aes(x = age)) +
   theme(strip.text.y = element_blank())
 
 
-pdf(file = "age.pdf", height = 4, width = 4)
+pdf(file = "age2.pdf", height = 3.5, width = 3.5)
 
 grid.newpage()
 grid.draw(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"))
@@ -411,7 +411,7 @@ p3 <- ggplot(pb, aes(x = college/100)) +
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
-pdf(file = "college.pdf", height = 4, width = 4)
+pdf(file = "college2.pdf", height = 3.5, width = 3.5)
 
 grid.newpage()
 grid.draw(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"))
@@ -472,7 +472,7 @@ p3 <- ggplot(pb, aes(x = medhhinc)) +
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
-pdf(file = "hhinc.pdf", height = 4, width = 4)
+pdf(file = "hhinc2.pdf", height = 3.5, width = 3.5)
 
 grid.newpage()
 grid.draw(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"))
@@ -538,7 +538,7 @@ p3 <- pb %>%
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
-pdf(file = "race.pdf", height = 4, width = 4)
+pdf(file = "race2.pdf", height = 3.5, width = 3.5)
 
 grid.newpage()
 
