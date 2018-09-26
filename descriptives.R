@@ -277,12 +277,13 @@ turnout <- turnout %>%
                                 ifelse(year(Year) %in% citycouncil, "City Council", "Off Year"))))
 
 p_turnout <- ggplot(subset(turnout, Office != "Off Year"), 
-            aes(x = Year, y = Turnout, group = interaction(Election, Office))) +
-  geom_line(aes(linetype = factor(Election, labels = c("General", "Primary")))) +
-  labs(linetype = "Election",
+            aes(x = Year, y = Turnout, group = interaction(Area, Office))) +
+  geom_line(aes(linetype = Area, color = Area)) +
+  labs(color = "Voter group",
+       linetype = "Voter group",
        x = "Office",
        y = "Turnout") +
-  facet_grid(Area ~ Office) +
+  facet_grid(factor(Election, labels = c("General", "Primary")) ~ Office) +
   theme_minimal() +
   theme(strip.placement = "outside",
         legend.margin = margin(r = 0.1, l = 0.01),
@@ -290,7 +291,7 @@ p_turnout <- ggplot(subset(turnout, Office != "Off Year"),
   scale_x_date(date_labels = "%y") +
   scale_y_continuous(position = "right")
 
-pdf(file = "turnout.pdf", height = 4, width = 4.5)
+pdf(file = "turnout.pdf", height = 3.5, width = 4.5)
 p_turnout
 dev.off()
 
@@ -348,7 +349,7 @@ p3 <- ggplot(pb, aes(x = age)) +
   theme(strip.text.y = element_blank())
 
 
-pdf(file = "age2.pdf", height = 3.5, width = 3.5)
+pdf(file = "age2.pdf", height = 3, width = 3)
 
 grid.newpage()
 grid.draw(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"))
@@ -411,7 +412,7 @@ p3 <- ggplot(pb, aes(x = college/100)) +
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
-pdf(file = "college2.pdf", height = 3.5, width = 3.5)
+pdf(file = "college2.pdf", height = 3, width = 3)
 
 grid.newpage()
 grid.draw(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"))
@@ -472,7 +473,7 @@ p3 <- ggplot(pb, aes(x = medhhinc)) +
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
-pdf(file = "hhinc2.pdf", height = 3.5, width = 3.5)
+pdf(file = "hhinc2.pdf", height = 3, width = 3)
 
 grid.newpage()
 grid.draw(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"))
@@ -486,10 +487,10 @@ p1 <- voterfile %>%
   ggplot(aes(x = Race)) +
   geom_bar() +
   labs(x = "",
-       y = "",
+       y = "NYC",
        title = " ") +
   coord_cartesian(ylim = c(0,2000000)) +
-  scale_y_continuous(labels = comma) +
+  scale_y_continuous(labels = comma, position = "right") +
   scale_x_discrete(labels = c("A" = "Asian", "B" = "Black", "H" = "Hispanic", "U" = "Unknown", "W" = "White")) +
   theme_minimal() +
   theme(strip.text.y = element_blank(),
@@ -497,7 +498,6 @@ p1 <- voterfile %>%
         axis.title.x=element_blank(),
         axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
-        axis.title.y=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
@@ -507,10 +507,10 @@ p2 <- voterfile %>%
   ggplot(aes(x = Race)) +
   geom_bar() +
   labs(x = "Estimated Race",
-       y = "",
+       y = "PB Districts",
        title = " ") +
   coord_cartesian(ylim = c(0,1200000)) +
-  scale_y_continuous(labels = comma) +
+  scale_y_continuous(labels = comma, position = "right") +
   scale_x_discrete(labels = c("A" = "Asian", "B" = "Black", "H" = "Hispanic", "U" = "Unknown", "W" = "White")) +
   theme_minimal() +
   theme(strip.text.y = element_blank(),
@@ -518,7 +518,6 @@ p2 <- voterfile %>%
         axis.title.x=element_blank(),
         axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
-        axis.title.y=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
@@ -527,18 +526,17 @@ p3 <- pb %>%
   ggplot(aes(x = Race)) +
   geom_bar() +
   labs(x = "Estimated Race",
-       y = "",
+       y = "PB Voters",
        title = " ") +
   coord_cartesian(ylim = c(0,8000)) +
-  scale_y_continuous(labels = comma) +
+  scale_y_continuous(labels = comma, position = "right") +
   scale_x_discrete(labels = c("A" = "Asian", "B" = "Black", "H" = "Hispanic", "U" = "Unknown", "W" = "White")) +
   theme_minimal() +
   theme(strip.text.y = element_blank(),
-        axis.title.y=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
-pdf(file = "race2.pdf", height = 3.5, width = 3.5)
+pdf(file = "race2.pdf", height = 3, width = 3)
 
 grid.newpage()
 
