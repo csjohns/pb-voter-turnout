@@ -3,13 +3,12 @@
 
 library(dplyr)
 library(tidyr)
+library(glue)
 library(lubridate)
 library(stringr)
 library(data.table)
 library(MatchIt)
 library(cem)
-library(lme4)
-library(simcf)
 
 source("credentials.R") # loads the access credentials
 source("dbDownload.R")
@@ -24,7 +23,7 @@ stringNAs <- function(x){
 ### Load PB data ### -------------------------------------------------------------------------------------
 
 pb <- dbDownload(table = "pb", username = username, password = password, dbname = db.name, host = hostname, port = port)
-rm(password, username, hostname, db.name, port) # if you want to remove the credentials from your environment 
+
 # load("pb_orig.Rdata")
 #pb <- pb_orig 
 #rm(pb_orig)
@@ -45,15 +44,33 @@ pbdistricts <- unique(pbnyc$district)
 rm(pbnyc)
 
 ## loading full voter file
-voterfile <- fread("PersonFile20180426-11056504994/PersonFile20180426-11056504994.txt")
+con <- dbConnect(MySQL(), username = username, password = password, dbname = db.name, host = hostname, port = port) #establish connection to DB
+voterfile <- glue_sql("SELECT * FROM voterfile52018 
+                      WHERE RegistrationStatusName <> 'Applicant' 
+                      AND (CityCouncilName IS NULL 
+                      OR CityCouncilName NOT IN ({nyccds*}))",
+                      nyccds = pbdistricts,
+                      .con = con) %>% 
+  dbGetQuery(con, .)
+dbDisconnect(con)
+rm(password, username, hostname, db.name, port) # if you want to remove the credentials from your environment 
+voterfile <- voterfile <- voterfile %>% 
+  filter(DateReg != "" & !`Voter File VANID` %in% pb$VANID) 
 
-# voterfiles <- fread("PersonFile20180426-11056504994.txt")
+## adding missing district info
+source("vf_gis_nyccdmatch.R")
+source("pb_cleanup_addnyccd_foranalysis.R")
 
-## filtering voterfile to only actual registered non-pb voters and 
-voterfile <- voterfile[!CityCouncilName %in% pbdistricts & !`Voter File VANID` %in% pb$VANID & !is.na(CityCouncilName) & RegistrationStatusName != "Applicant"]
+## remove districts in pbdistricts
+voterfile <- voterfile %>% filter(!CityCouncilName %in% pbdistricts & !is.na(CityCouncilName) & !RegistrationStatus  %in% c("Dropped", "Unregistered"))
 
-## Renaming/recoding to match with the pb table on the DB
-voterfile <- as.data.frame(voterfile)
+# voterfile <- fread("PersonFile20180426-11056504994/PersonFile20180426-11056504994.txt")
+
+# ## filtering voterfile to only actual registered non-pb voters and 
+# voterfile <- voterfile[!CityCouncilName %in% pbdistricts & !`Voter File VANID` %in% pb$VANID & !is.na(CityCouncilName) & RegistrationStatusName != "Applicant"]
+# 
+# ## Renaming/recoding to match with the pb table on the DB
+# voterfile <- as.data.frame(voterfile)
 
 # renaming columns - modified 5/15 for the 2018 voterfile column name changes
 voterfile <- voterfile  %>%
@@ -84,8 +101,6 @@ voterfile <- voterfile  %>%
     select(-starts_with("Special"), -ends_with("Party")) %>%
     select(-Lat, -Long, -starts_with("Street"), -starts_with("Apt"), - VHHID, -StateFileID, -DWID, 
            -starts_with("Reported"))
-  voterfile <- voterfile %>% 
-    filter(DoR != "")
   
   ### Load compare structure of the two data frames ### -------------------------------------------------------------------------------------
   

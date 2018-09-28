@@ -75,7 +75,12 @@ c.base_majmatch <- c.match
 # Unmatched  938619 2524
 # .5901 from matching df, .4757 from original
 
-
+# post GIS
+# G0   G1
+# All       1035760 6169
+# Matched    174213 3645
+# Unmatched  861547 2524
+# .591 frommatching (.515 from orig)
 
 ####  Base with college added back in ------------------------------------------------------------------
 rm(c.match, c.out)
@@ -151,6 +156,12 @@ c.college <- c.match
 # Unmatched  974534 2733
 # .5562 from matching, .4483 from original
 
+#post GIS
+# G0   G1
+# All       1035760 6169
+# Matched    141033 3434
+# Unmatched  894727 2735
+# .5567 from matching
 
 ####  more granular  ------------------------------------------------------------------
 rm(c.match, c.out)
@@ -224,9 +235,18 @@ c.granular <- c.match
 # Unmatched  978162 2959
 # .5195 matched, .4187 from original 7640
 
-save(voterfile, c.granular, c.college, c.base_majmatch, file = "matchcompare.RData")
+## post GIS
+# G0   G1
+# All       1035760 6169
+# Matched    137399 3217
+# Unmatched  898361 2952
+# .521 matched
+
+
+save(voterfile, c.granular, c.college, c.base_majmatch, file = "matchcompare_gis.RData")
 
 #### Comparing estimates from the differently specified matches ------------------------------------------------------------------
+library(lme4)
 library(broom)
 library(ggplot2)
 source("create_pb_long.R")
