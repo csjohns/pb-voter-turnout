@@ -3,6 +3,7 @@ library(data.table)
 library(lubridate)
 library(gridExtra)
 library(grid)
+library(scales)
 
 source("credentials.R") # loads the access credentials
 source("dbDownload.R")
@@ -300,7 +301,7 @@ dev.off()
 #### Demographics #####
 
 ## Age
-library(scales)
+
 p1 <- ggplot(voterfile, 
                 aes(x = age)) +
   geom_histogram(bins = 15) +
@@ -349,7 +350,7 @@ p3 <- ggplot(pb, aes(x = age)) +
   theme(strip.text.y = element_blank())
 
 
-pdf(file = "age2.pdf", height = 3, width = 3)
+pdf(file = "age2.pdf", height = 3.25, width = 3.25)
 
 grid.newpage()
 grid.draw(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"))
@@ -412,7 +413,7 @@ p3 <- ggplot(pb, aes(x = college/100)) +
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
-pdf(file = "college2.pdf", height = 3, width = 3)
+pdf(file = "college2.pdf", height = 3.25, width = 3.25)
 
 grid.newpage()
 grid.draw(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"))
@@ -473,7 +474,7 @@ p3 <- ggplot(pb, aes(x = medhhinc)) +
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
-pdf(file = "hhinc2.pdf", height = 3, width = 3)
+pdf(file = "hhinc2.pdf", height = 3.25, width = 3.25)
 
 grid.newpage()
 grid.draw(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"))
@@ -536,7 +537,7 @@ p3 <- pb %>%
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
-pdf(file = "race2.pdf", height = 3, width = 3)
+pdf(file = "race2.pdf", height = 3.25, width = 3.25)
 
 grid.newpage()
 
@@ -551,3 +552,22 @@ dev.off()
 #                nrow = 1, ncol = 5,
 #                widths = c(.8, .8, .8, .8, 1.4))
 # ggsave(file = "descriptives.png", p, width = 12, height = 8)
+
+#### PB VOTE COUNTS ####
+
+pbvotes <- read_csv("pbnyc_district_votes.csv")
+
+pbvotes <- pbvotes %>% filter(voters != 0)
+
+p <- ggplot(pbvotes, aes(x = voteYear, y = voters)) +
+  geom_point(alpha = 0.6) +
+  labs(x = "Vote Year",
+       y = "District PB Vote Count") +
+  scale_y_continuous(labels = comma)
+
+pdf(file = "districtvotes.pdf", height = 3.5, width = 4.5)
+p
+dev.off()
+
+pbvotes %>% group_by(pbnycCycle) %>% summarize(avg = mean(voters, na.rm = TRUE),
+                                               tot = n())
