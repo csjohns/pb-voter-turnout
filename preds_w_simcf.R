@@ -1,3 +1,6 @@
+library(simcf)
+library(MASS)
+rm(lme_age2, lme_elig, lme_full, lme_full_ncollege, lme_lmed, lme_logit, lme_med2, lme_nosex, lme_nowhite, covar_lm, covar_logit)
 
 ##### Predictions with SIMCF
 makeFEdummies <- function (unit, names = NULL) {
@@ -1020,7 +1023,7 @@ library(stargazer)
 library(texreg)
 
 modelist <- list(lme_base_simcf, lme_race_simcf, lme_majmatch_simcf, lme_gender_simcf, lme_educ_simcf, lme_wealth_simcf, lme_youth_simcf)
-stargazer(lme_base_simcf, lme_race_simcf, lme_gender_simcf, lme_educ_simcf, lme_wealth_simcf, lme_youth_simcf)
+# stargazer(lme_base_simcf, lme_race_simcf, lme_gender_simcf, lme_educ_simcf, lme_wealth_simcf, lme_youth_simcf)
 stargazer(modelist, 
           out = "Paper_text/Tables/subgroups_SG.tex", label = "coefficients",
           dep.var.labels.include = FALSE, dep.var.caption = "",
@@ -1038,3 +1041,6 @@ stargazer(modelist,
           #                 "Year*Covariate interactions?"),
           keep.stat = c("n", "aic", "bic", "n")
           )
+
+
+####  ----

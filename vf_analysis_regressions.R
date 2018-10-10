@@ -115,7 +115,7 @@ AIC(lme_nowhite)
 BIC(lme_age2)
 BIC(lme_nowhite)
 
-## % white isn't contributing much once majority race is included (esp. since matched on nonwhite)
+## % white isn't contributing, much once majority race is included (esp. since matched on nonwhite)
 ##  BIC and AIC  agree that it does not improve the model
 table(pb_long$turned_out, fitted(lme_age2)>= .5)
 table(pb_long$turned_out == as.numeric(fitted(lme_age2)>= .5)) %>% prop.table() #---> 87% pcp

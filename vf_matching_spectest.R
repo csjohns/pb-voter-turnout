@@ -260,7 +260,7 @@ fit_lme <- function(formula, df, name) {
   out
 }
 
-load("matchcompare.RData")
+load("matchcompare_gis.RData")
 
 vf_analysis_base <- c.base_majmatch %>% dplyr::select(-n_treat, -n_control) %>% 
   left_join(voterfile) %>% 
@@ -295,7 +295,7 @@ ggplot(all) +
                       ymax = estimate + 1.96*std.error, 
                       color = source),
                   position = position_dodge(width = 1)) +
-  ylim(-2,2) +
+  ylim(-2.75,2.75) +
   coord_flip()+
   theme_minimal()
 
