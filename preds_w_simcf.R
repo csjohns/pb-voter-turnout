@@ -834,7 +834,7 @@ preds_fd_wealth$group <- "Wealth"
 preds_fd_wealth$level <- c("Wealthy area", "Not wealthy area")
 
 preds_fd_educ$group <- "Education"
-preds_fd_educ$level <- c("More college_pct degrees", "Fewer college_pct degrees")
+preds_fd_educ$level <- c("More college degrees", "Fewer college degrees")
 
 
 preds_fd_youth$group <- "Youth"
@@ -852,7 +852,7 @@ ggplot(preds_fd_plot, aes(x = group, y = pe, ymin = lower, ymax =upper, color = 
   geom_text(aes(y = -0.0025, label = level), hjust = 1, position = position_dodge(width = .6), size = 3) +
   geom_hline(aes(yintercept = 0)) +
   labs(x = "", y = "Change in predicted probability of voting") +
-  ylim(-.075,.3) +
+  ylim(-.11,.4) +
   coord_flip() +
   theme_minimal() +
   theme(legend.position = "none", 
@@ -949,8 +949,8 @@ simbetas <- mvrnorm(sims, pe, vc)
 
 xhyp_youth <- xhyp_update(xhyp_youth, simyear, oldsimyear)
 
-yhyp <- logitsimev(xhyp_youth, simbetas)
-yhyp_fd <- logitsimfd(xhyp_youth, simbetas)
+yhyp_youth <- logitsimev(xhyp_youth, simbetas)
+yhyp_fd_youth <- logitsimfd(xhyp_youth, simbetas)
 
 preds_youth <-  cbind(xhyp_youth$x, as.data.frame(yhyp_youth))
 
@@ -970,7 +970,7 @@ preds_fd_wealth$group <- "Wealth"
 preds_fd_wealth$level <- c("Wealthy area", "Not wealthy area")
 
 preds_fd_educ$group <- "Education"
-preds_fd_educ$level <- c("More college_pct degrees", "Fewer college_pct degrees")
+preds_fd_educ$level <- c("More college degrees", "Fewer college degrees")
 
 
 preds_fd_youth$group <- "Youth"
@@ -988,7 +988,7 @@ ggplot(preds_fd_plot_2017, aes(x = group, y = pe, ymin = lower, ymax =upper, col
   geom_text(aes(y = -0.0025, label = level), hjust = 1, position = position_dodge(width = .6), size = 3) +
   geom_hline(aes(yintercept = 0)) +
   labs(x = "", y = "Change in predicted probability of voting in 2017 for \nnon-PB voters after hypothetical participation in PB") +
-  ylim(-.075,.38) +
+  ylim(-.12,.43) +
   coord_flip() +
   theme_minimal() +
   theme(legend.position = "none")
@@ -1011,11 +1011,11 @@ ggplot(preds_fd_comb, aes(x = group, y = pe, ymin = lower, ymax =upper, color = 
   scale_color_discrete(guide = FALSE) +
   labs(x = "", shape = "Year", linetype = "Year",
        y = "Change in predicted probability of voting for \nnon-PB voters after counterfactual participation in PB") +
-  ylim(-.075,.38) +
+  ylim(-.14,.43) +
   coord_flip() +
-  theme_minimal()# +
-  #theme(legend.position = "none")
-ggsave("Paper/Figs/group_fds_bothyears.pdf", width = 6.5, height = 5.5)
+  theme_minimal() +
+  theme(legend.position = "top")
+ggsave("Paper/Figs/group_fds_bothyears.pdf", width = 6.75, height = 6)
 
 
 ### Fit statistics for each ------------------------------------------------------------------------------------
