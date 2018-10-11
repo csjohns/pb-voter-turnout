@@ -635,13 +635,13 @@ ggsave("Paper/Figs/bywealth.pdf", width = 5, height = 4)
 pb_long <- pb_long %>% mutate(youth = ifelse(age <= 29, 1, 0))
 logit_youth_simcf <- turned_out ~ pb + after_pb*youth + race_B + race_A + race_H + race_U +
   year_2009*youth + year_2010*youth + year_2011*youth + year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth + year_2017*youth +
-  election_p + election_pp + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + college_pct + majmatch  + (1 | VANID) + (1 | NYCCD)
+  election_p + election_pp + Female + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + college_pct + majmatch  + (1 | VANID) + (1 | NYCCD)
 lme_youth_simcf <- glmer(logit_youth_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients),
 #######################################################################################################################################
 ### Formula for simcf
 logit_youth_form <-  turned_out ~ pb + after_pb*youth + race_B + race_A + race_H + race_U +
   year_2009*youth + year_2010*youth + year_2011*youth + year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth + year_2017*youth +
-  election_p + election_pp + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + college_pct + majmatch
+  election_p + election_pp + Female + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + college_pct + majmatch
 
 sims <- 10000
 pe <- fixef(lme_youth_simcf)
