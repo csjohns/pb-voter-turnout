@@ -10,7 +10,7 @@ pb <- pb %>%
   mutate(NYCCD = ifelse(NYCCD == "", NA, NYCCD),
          ED = ifelse(ED == "", NA, ED))
 
-nyccds <- full_join(nyccds, data.frame(ED = unique(pb$ED), stringsAsFactors = FALSE))
+nyccds <- full_join(nyccds, data.frame(ED = as.vector(na.omit(unique(pb$ED))), stringsAsFactors = FALSE))
 
 for (i in 1:nrow(pb)){
   if(is.na(pb$NYCCD[i])){

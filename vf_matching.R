@@ -46,7 +46,8 @@ rm(pbnyc)
 ## loading full voter file
 con <- dbConnect(MySQL(), username = username, password = password, dbname = db.name, host = hostname, port = port) #establish connection to DB
 voterfile <- glue_sql("SELECT * FROM voterfile52018 
-                      WHERE RegistrationStatusName <> 'Applicant' 
+                      WHERE RegistrationStatusName NOT IN ('Applicant', 'Dropped', 'Unregistered')
+                      AND DateReg <> ''
                       AND (CityCouncilName IS NULL 
                       OR CityCouncilName NOT IN ({nyccds*}))",
                       nyccds = pbdistricts,
@@ -54,6 +55,7 @@ voterfile <- glue_sql("SELECT * FROM voterfile52018
   dbGetQuery(con, .)
 dbDisconnect(con)
 rm(password, username, hostname, db.name, port) # if you want to remove the credentials from your environment 
+save(voterfile, file = "voterfile_noPB.Rdata ")
 voterfile <- voterfile <- voterfile %>% 
   filter(DateReg != "" & !`Voter File VANID` %in% pb$VANID) 
 
@@ -62,7 +64,8 @@ source("vf_gis_nyccdmatch.R")
 source("pb_cleanup_addnyccd_foranalysis.R")
 
 ## remove districts in pbdistricts
-voterfile <- voterfile %>% filter(!CityCouncilName %in% pbdistricts & !is.na(CityCouncilName) & !RegistrationStatus  %in% c("Dropped", "Unregistered"))
+voterfile <- voterfile %>% filter(!CityCouncilName %in% pbdistricts & !is.na(CityCouncilName))
+save(voterfile, file = "voterfile_noPB_gis.Rdata")
 
 # voterfile <- fread("PersonFile20180426-11056504994/PersonFile20180426-11056504994.txt")
 
@@ -100,7 +103,7 @@ voterfile <- voterfile  %>%
   voterfile <- voterfile %>%
     select(-starts_with("Special"), -ends_with("Party")) %>%
     select(-Lat, -Long, -starts_with("Street"), -starts_with("Apt"), - VHHID, -StateFileID, -DWID, 
-           -starts_with("Reported"))
+           -starts_with("Reported"), -CounDist)
   
   ### Load compare structure of the two data frames ### -------------------------------------------------------------------------------------
   
@@ -130,6 +133,7 @@ voterfile <- voterfile  %>%
            g_early = sum(g_2000, g_2001, g_2002, g_2003, g_2004, g_2005, g_2006, g_2007, na.rm = TRUE),
            p_early = sum(p_2000, p_2001, p_2002, p_2003, p_2004, p_2005, p_2006, p_2007, na.rm = TRUE)) %>% 
     group_by()
+  gc()
   
 ### Including census data ### ----------------------------------------------------------------------------------------------------------------------------
   source("censustables.R")
@@ -148,7 +152,7 @@ voterfile <- voterfile  %>%
   voterfile <- voterfile %>% 
     mutate(majmatch = Race == majority)
   
-  ##7640 PB voters in the voter file
+  ##7657 PB voters in the voter file
   
 ### Including competitiveness ----------------------------------------------------------------------
 load("compet.Rdata")  

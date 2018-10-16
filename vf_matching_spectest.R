@@ -77,10 +77,10 @@ c.base_majmatch <- c.match
 
 # post GIS
 # G0   G1
-# All       1035760 6169
-# Matched    174213 3645
-# Unmatched  861547 2524
-# .591 frommatching (.515 from orig)
+# All       1035813 6163
+# Matched    172848 3671
+# Unmatched  862965 2492
+# .596 frommatching (.543 from orig)
 
 ####  Base with college added back in ------------------------------------------------------------------
 rm(c.match, c.out)
@@ -158,10 +158,10 @@ c.college <- c.match
 
 #post GIS
 # G0   G1
-# All       1035760 6169
-# Matched    141033 3434
-# Unmatched  894727 2735
-# .5567 from matching
+# All       1035813 6163
+# Matched    139673 3461
+# Unmatched  896140 2702
+# .562 from matching, .452 from original
 
 ####  more granular  ------------------------------------------------------------------
 rm(c.match, c.out)
@@ -237,10 +237,10 @@ c.granular <- c.match
 
 ## post GIS
 # G0   G1
-# All       1035760 6169
-# Matched    137399 3217
-# Unmatched  898361 2952
-# .521 matched
+# All       1035813 6163
+# Matched    136046 3246
+# Unmatched  899767 2917
+# .527 matched, .424 from original
 
 
 save(voterfile, c.granular, c.college, c.base_majmatch, file = "matchcompare_gis.RData")
