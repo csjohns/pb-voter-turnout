@@ -66,6 +66,7 @@ source("pb_cleanup_addnyccd_foranalysis.R")
 ## remove districts in pbdistricts
 voterfile <- voterfile %>% filter(!CityCouncilName %in% pbdistricts & !is.na(CityCouncilName))
 save(voterfile, file = "voterfile_noPB_gis.Rdata")
+# load("voterfile_noPB_gis.Rdata")
 
 # voterfile <- fread("PersonFile20180426-11056504994/PersonFile20180426-11056504994.txt")
 
@@ -152,7 +153,7 @@ voterfile <- voterfile  %>%
   voterfile <- voterfile %>% 
     mutate(majmatch = Race == majority)
   
-  ##7657 PB voters in the voter file
+  ##7658 PB voters in the voter file
   
 ### Including competitiveness ----------------------------------------------------------------------
 load("compet.Rdata")  

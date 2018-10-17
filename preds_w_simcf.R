@@ -20,6 +20,7 @@ makeFEdummies <- function (unit, names = NULL) {
 ## setting up pb_long from vf_analysis again
 
 ## process analysis df to pb_long df for analysis (creating wide pb table along the way)
+load("vf_analysis.Rdata")
 source("create_pb_long.R")
 pb_long <- create_pb_long(vf_analysis)
 pb_long_orig <- pb_long # making a copy in case all is f'ed up and don't want to rerun all processing code
