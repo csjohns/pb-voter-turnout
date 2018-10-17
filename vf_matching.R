@@ -56,7 +56,7 @@ voterfile <- glue_sql("SELECT * FROM voterfile52018
 dbDisconnect(con)
 rm(password, username, hostname, db.name, port) # if you want to remove the credentials from your environment 
 save(voterfile, file = "voterfile_noPB.Rdata ")
-voterfile <- voterfile <- voterfile %>% 
+voterfile <- voterfile %>% 
   filter(DateReg != "" & !`Voter File VANID` %in% pb$VANID) 
 
 ## adding missing district info
