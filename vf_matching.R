@@ -191,7 +191,7 @@ voterfile <- voterfile %>%
     rename(comp_g_2016 = g_2016_comp, comp_g_2014 = g_2014_comp, comp_p_2014 = p_2014_comp, comp_pp_2016 = pp_2016_comp) %>% 
     mutate(agegroup = cut(age, breaks = c(0, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60,65, 70,75, 80,85, 90, Inf))) %>% 
     select(VANID, pb, Race, agegroup, Sex, 
-           g_early, g_2008, g_2009, g_2010, g_2011, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
+           g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
            white, college, medhhinc , majmatch 
            , starts_with("comp")
            # ,g_2014_comp, g_2016_comp, p_2014_comp, pp_2016_comp
