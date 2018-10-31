@@ -3,6 +3,7 @@ library(data.table)
 library(lubridate)
 library(gridExtra)
 library(grid)
+library(glue)
 library(scales)
 
 source("credentials.R") # loads the access credentials
@@ -43,15 +44,30 @@ pb2016 <- pbnyc %>% filter(districtCycle == 1 & voteYear == 2016)
 pbdistricts <- unique(pbnyc$district)
 rm(pbnyc)
 
+## loading full voter file
+con <- dbConnect(MySQL(), username = username, password = password, dbname = db.name, host = hostname, port = port) #establish connection to DB
+voterfile <- glue_sql("SELECT * FROM voterfile52018 
+                      WHERE RegistrationStatusName NOT IN ('Applicant', 'Dropped', 'Unregistered')
+                      AND DateReg <> ''",
+                      #nyccds = pbdistricts,
+                      .con = con) %>% 
+  dbGetQuery(con, .)
+dbDisconnect(con)
+rm(password, username, hostname, db.name, port) # if you want to remove the credentials from your environment 
+save(voterfile, file = "voterfile_noPB.Rdata ")
 
-voterfile <- fread("PersonFile20180426-11056504994.txt")
+voterfile <- voterfile %>% 
+  filter(DateReg != "" & !`Voter File VANID` %in% pb$VANID) 
 
-pbdistricts <- c(3, 5, 6, 7, 8, 10, 11, 12, 15, 16, 17, 19, 20, 21, 22, 23, 24, 26, 27, 29, 30,
-                31, 32, 33, 34, 35, 36, 38, 39, 40, 41, 44, 45, 47, 49)
 
-pbsampledists <- c(39, 23, 30, 35, 36, 40, "NYC")
+
+# pbdistricts <- c(3, 5, 6, 7, 8, 10, 11, 12, 15, 16, 17, 19, 20, 21, 22, 23, 24, 26, 27, 29, 30,
+#                31, 32, 33, 34, 35, 36, 38, 39, 40, 41, 44, 45, 47, 49)
+
+# pbsampledists <- c(39, 23, 30, 35, 36, 40, "NYC")
 
 # Retain only "Registered Active" and "Registered Inactive"
+voterfile <- as.data.table(voterfile)
 voterfile <- voterfile[RegistrationStatusName == "Registered Active" | RegistrationStatusName == "Registered Inactive"]
 
 voterfile <- voterfile  %>%
@@ -282,17 +298,16 @@ p_turnout <- ggplot(subset(turnout, Office != "Off Year"),
   geom_line(aes(linetype = Area, color = Area)) +
   labs(color = "Voter group",
        linetype = "Voter group",
-       x = "Office",
+       x = "Year",
        y = "Turnout") +
   facet_grid(factor(Election, labels = c("General", "Primary")) ~ Office) +
   theme_minimal() +
-  theme(strip.placement = "outside",
-        legend.margin = margin(r = 0.1, l = 0.01),
-        axis.title.y.right = element_text(size = 9)) +
+  theme(legend.position = "bottom",
+        panel.spacing = unit(1, "lines")) +
   scale_x_date(date_labels = "%y") +
-  scale_y_continuous(position = "right")
+  scale_y_continuous(position = "left")
 
-pdf(file = "turnout.pdf", height = 3.5, width = 4.5)
+pdf(file = "turnout.pdf", height = 3, width = 5)
 p_turnout
 dev.off()
 
@@ -304,13 +319,13 @@ dev.off()
 
 p1 <- ggplot(voterfile, 
                 aes(x = age)) +
-  geom_histogram(bins = 15) +
+  geom_histogram(bins = 15, fill = "#619CFF") +
   labs(x = "",
        y = "",
        title = " ") +
   coord_cartesian(xlim = c(0, 110),
                   ylim = c(0, 2000000)) +
-  scale_y_continuous(labels = comma) +
+  scale_y_continuous(labels = c(0, 500, 1000, 1500, 2000)) +
   scale_x_continuous(breaks = c(0, 15, 30, 45, 60, 75, 90, 105)) +
   theme_minimal() +
   theme(strip.text.y = element_blank(),
@@ -322,13 +337,13 @@ p1 <- ggplot(voterfile,
 p2 <- voterfile %>% 
   filter(NYCCD %in% pbdistricts) %>% 
   ggplot(aes(x = age)) +
-  geom_histogram(bins = 15) +
+  geom_histogram(bins = 15, fill = "#00BA38") +
   labs(x = "",
        y = "",
        title = " ") +
   coord_cartesian(xlim = c(0, 110),
                   ylim = c(0, 1200000)) +
-  scale_y_continuous(labels = comma) +
+  scale_y_continuous(labels = c(0, 250, 500, 750, 1000, 1250)) +
   scale_x_continuous(breaks = c(0, 15, 30, 45, 60, 75, 90, 105)) +
   theme_minimal() +
   theme(strip.text.y = element_blank(),
@@ -338,19 +353,19 @@ p2 <- voterfile %>%
         axis.ticks.x=element_blank())
 
 p3 <- ggplot(pb, aes(x = age)) +
-  geom_histogram(bins = 15) +
+  geom_histogram(bins = 15, fill = "#F8766D") +
   labs(x = "Age",
        y = "",
        title = " ") +
   coord_cartesian(xlim = c(0, 110),
                   ylim = c(0, 8000)) +
-  scale_y_continuous(labels = comma) +
+  scale_y_continuous(labels = c(0, 2, 4, 6, 8)) +
   scale_x_continuous(breaks = c(0, 15, 30, 45, 60, 75, 90, 105)) +
   theme_minimal() +
   theme(strip.text.y = element_blank())
 
 
-pdf(file = "age2.pdf", height = 3.25, width = 3.25)
+pdf(file = "age2.pdf", height = 3.1, width = 2.75)
 
 grid.newpage()
 grid.draw(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"))
@@ -361,7 +376,7 @@ dev.off()
 ##### still working here ####
 p1 <- ggplot(voterfile, 
                     aes(x = college/100)) +
-  geom_histogram(bins = 15) +
+  geom_histogram(bins = 15, fill = "#619CFF") +
   labs(x = "College degree, tract (%)",
        y = "",
        title = " ") +
@@ -381,7 +396,7 @@ p1 <- ggplot(voterfile,
 p2 <- voterfile %>% 
   filter(NYCCD %in% pbdistricts) %>% 
   ggplot(aes(x = college/100)) +
-  geom_histogram(bins = 15) +
+  geom_histogram(bins = 15, fill = "#00BA38") +
   labs(x = "College degree, tract (%)",
        y = "",
        title = " ") +
@@ -399,7 +414,7 @@ p2 <- voterfile %>%
         axis.ticks.y=element_blank())
 
 p3 <- ggplot(pb, aes(x = college/100)) +
-  geom_histogram(bins = 15) +
+  geom_histogram(bins = 15, fill = "#F8766D") +
   labs(x = "College degree, tract (%)",
        y = "",
        title = " ") +
@@ -413,7 +428,7 @@ p3 <- ggplot(pb, aes(x = college/100)) +
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
-pdf(file = "college2.pdf", height = 3.25, width = 3.25)
+pdf(file = "college2.pdf", height = 3.1, width = 2.75)
 
 grid.newpage()
 grid.draw(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"))
@@ -422,7 +437,7 @@ dev.off()
 ## Household Income
 
 p1 <- ggplot(voterfile, aes(x = medhhinc)) +
-  geom_histogram(bins = 15) +
+  geom_histogram(bins = 15, fill = "#619CFF") +
   labs(x = "",
        y = "",
        title = " ") +
@@ -442,7 +457,7 @@ p1 <- ggplot(voterfile, aes(x = medhhinc)) +
 p2 <- voterfile %>% 
   filter(NYCCD %in% pbdistricts) %>% 
   ggplot(aes(x = medhhinc)) +
-  geom_histogram(bins = 15) +
+  geom_histogram(bins = 15, fill = "#00BA38") +
   labs(x = "",
        y = "",
        title = " ") +
@@ -460,7 +475,7 @@ p2 <- voterfile %>%
         axis.ticks.y=element_blank())
 
 p3 <- ggplot(pb, aes(x = medhhinc)) +
-  geom_histogram(bins = 15) +
+  geom_histogram(bins = 15, fill = "#F8766D") +
   labs(x = "Median Household Income ($)",
        y = "",
        title = " ") +
@@ -474,7 +489,7 @@ p3 <- ggplot(pb, aes(x = medhhinc)) +
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
-pdf(file = "hhinc2.pdf", height = 3.25, width = 3.25)
+pdf(file = "hhinc2.pdf", height = 3.1, width = 2.75)
 
 grid.newpage()
 grid.draw(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"))
@@ -486,13 +501,13 @@ dev.off()
 p1 <- voterfile %>% 
   filter(Race != "N") %>% 
   ggplot(aes(x = Race)) +
-  geom_bar() +
+  geom_bar(fill = "#619CFF") +
   labs(x = "",
        y = "NYC",
        title = " ") +
   coord_cartesian(ylim = c(0,2000000)) +
   scale_y_continuous(labels = comma, position = "right") +
-  scale_x_discrete(labels = c("A" = "Asian", "B" = "Black", "H" = "Hispanic", "U" = "Unknown", "W" = "White")) +
+  scale_x_discrete(labels = c("A" = "Asian", "B" = "Black", "H" = "Hisp.", "U" = "Unk.", "W" = "White")) +
   theme_minimal() +
   theme(strip.text.y = element_blank(),
         strip.text.x = element_blank(),
@@ -506,13 +521,13 @@ p2 <- voterfile %>%
   filter(NYCCD %in% pbdistricts) %>% 
   filter(Race != "N") %>% 
   ggplot(aes(x = Race)) +
-  geom_bar() +
+  geom_bar(fill = "#00BA38") +
   labs(x = "Estimated Race",
        y = "PB Districts",
        title = " ") +
   coord_cartesian(ylim = c(0,1200000)) +
   scale_y_continuous(labels = comma, position = "right") +
-  scale_x_discrete(labels = c("A" = "Asian", "B" = "Black", "H" = "Hispanic", "U" = "Unknown", "W" = "White")) +
+  scale_x_discrete(labels = c("A" = "Asian", "B" = "Black", "H" = "Hisp.", "U" = "Unk.", "W" = "White")) +
   theme_minimal() +
   theme(strip.text.y = element_blank(),
         strip.text.x = element_blank(),
@@ -525,19 +540,19 @@ p2 <- voterfile %>%
 p3 <- pb %>% 
   filter(Race != "N") %>% 
   ggplot(aes(x = Race)) +
-  geom_bar() +
+  geom_bar(fill = "#F8766D") +
   labs(x = "Estimated Race",
        y = "PB Voters",
        title = " ") +
   coord_cartesian(ylim = c(0,8000)) +
   scale_y_continuous(labels = comma, position = "right") +
-  scale_x_discrete(labels = c("A" = "Asian", "B" = "Black", "H" = "Hispanic", "U" = "Unknown", "W" = "White")) +
+  scale_x_discrete(labels = c("A" = "Asian", "B" = "Black", "H" = "Hisp.", "U" = "Unk.", "W" = "White")) +
   theme_minimal() +
   theme(strip.text.y = element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
-pdf(file = "race2.pdf", height = 3.25, width = 3.25)
+pdf(file = "race2.pdf", height = 3.1, width = 2.75)
 
 grid.newpage()
 
