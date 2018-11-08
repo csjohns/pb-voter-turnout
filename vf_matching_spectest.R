@@ -22,8 +22,8 @@ c.out <- matching_df %>% select(-VANID, -college) %>%
          Sex = as.factor(Sex)) %>% 
   cem(treatment = "pb", data = .,  
       grouping = list(
-        g_early = list("0",c("1,2"), c("3", "4"), c("5", "6"), c("7,", "8")), 
-        p_early = list("0",c("1,2"),  c("3", "4"), c("5", "6"), c("7,", "8"))
+        g_early = list("0",c("1,2"), c("3", "4"), c("5", "6"), c("7", "8")), 
+        p_early = list("0",c("1,2"),  c("3", "4"), c("5", "6"), c("7", "8"))
       ), 
       cutpoints = df_cutpoints,
       verbose = 1) ### DON'T USE K2K - TOO MUCH MEMORY DEMAND. RANDOMLY DRAW FROM STRATA AFTER THE FACT
@@ -77,10 +77,10 @@ c.base_majmatch <- c.match
 
 # post GIS
 # G0   G1
-# All       1036023 6155
-# Matched    172804 3629
-# Unmatched  863219 2526
-# .590 frommatching (.474 from orig)
+# All       1035663 6151
+# Matched    176832 3899
+# Unmatched  858831 2252
+# .634 frommatching (.474 from orig)
 
 ####  Base with college added back in ------------------------------------------------------------------
 rm(c.match, c.out)
@@ -104,8 +104,8 @@ c.out <- matching_df %>% select(-VANID) %>%
          Sex = as.factor(Sex)) %>% 
   cem(treatment = "pb", data = .,  
       grouping = list(
-        g_early = list("0",c("1,2"), c("3", "4"), c("5", "6"), c("7,", "8")), 
-        p_early = list("0",c("1,2"),  c("3", "4"), c("5", "6"), c("7,", "8"))
+        g_early = list("0",c("1,2"), c("3", "4"), c("5", "6"), c("7", "8")), 
+        p_early = list("0",c("1,2"),  c("3", "4"), c("5", "6"), c("7", "8"))
       ), 
       cutpoints = df_cutpoints,
       verbose = 1) ### DON'T USE K2K - TOO MUCH MEMORY DEMAND. RANDOMLY DRAW FROM STRATA AFTER THE FACT
@@ -158,10 +158,10 @@ c.college <- c.match
 
 #post GIS
 # G0   G1
-# All       1036023 6155
-# Matched    139624 3419
-# Unmatched  896399 2736
-# .555 from matching, .446 from original
+# All       1035663 6151
+# Matched    142649 3700
+# Unmatched  893014 2451
+# .602 from matching, .446 from original
 
 ####  more granular  ------------------------------------------------------------------
 rm(c.match, c.out)
@@ -237,13 +237,147 @@ c.granular <- c.match
 
 ## post GIS
 # G0   G1
-# All       1036023 6155
-# Matched    135999 3203
-# Unmatched  900024 2952
-# .520 matched, .418 from original
+# All       1035663 6151
+# Matched    137493 3346
+# Unmatched  898170 2805
+# .544 matched, .??? from original
 
 
-save(voterfile, c.granular, c.college, c.base_majmatch, file = "matchcompare_gis.RData")
+######
+
+####  Refined match back in ------------------------------------------------------------------
+rm(c.match, c.out)
+
+df_cutpoints <- list(
+  white = quantile(matching_df$white, c(0,.2,.4,.6,.8,1)),
+  college = quantile(matching_df$college, c(0,.5,1)),
+  medhhinc = quantile(matching_df$medhhinc, c(0,.2,.4,.6,.8,1))
+  , comp_g_2014 = unique(quantile(compet_select$g_2014_comp, probs = c(0,.2,.4,.6,.8,1), na.rm = TRUE)),
+  comp_g_2016 = unique(quantile(compet_select$g_2016_comp, probs = c(0,.2,.4,.6,.8,1), na.rm = TRUE)),
+  comp_p_2014 = unique(quantile(compet_select$p_2014_comp, probs = c(0,.2,.4,.6,.8,1), na.rm = TRUE)),
+  comp_pp_2016 = unique(quantile(compet_select$pp_2016_comp, probs = c(0,.2,.4,.6,.8,1), na.rm = TRUE))
+)
+
+
+c.out <- matching_df %>% select(-VANID) %>% 
+  mutate_at(vars(starts_with("g_"), starts_with(("p_"))), as.factor) %>% 
+  mutate(pp_2004 = as.factor(pp_2004),
+         pp_2008 = as.factor(pp_2008),
+         Race = as.factor(Race),
+         Sex = as.factor(Sex)) %>% 
+  cem(treatment = "pb", data = .,  
+      grouping = list(
+        g_early = list("0",c("1,2"), c("3", "4", "5"), c("6", "7", "8")), 
+        p_early = list("0",c("1,2"),  c("3", "4","5"), c("6", "7", "8"))
+      ), 
+      cutpoints = df_cutpoints,
+      verbose = 1) ### DON'T USE K2K - TOO MUCH MEMORY DEMAND. RANDOMLY DRAW FROM STRATA AFTER THE FACT
+
+c.out 
+c.out.refined <- summary(c.out)
+
+### Creating the pairwise k2k match including one random sampled control for every pb voter  --------------------------------------------------------------------------------
+c.match <- data.frame(VANID = matching_df$VANID, pb = matching_df$pb, cem_group = c.out$strata, race =matching_df$Race)
+
+c.match <- c.match %>% 
+  group_by(cem_group) %>% 
+  mutate(n_treat = sum(pb),
+         n_control = sum(pb==0)) %>% 
+  filter(n_treat > 0 & n_control > 0)
+
+c.treat <- c.match %>% filter(pb == 1 & n_control > 0)
+
+c.control <- c.match %>% filter(pb == 0 & n_treat > 0)
+
+c.control <- c.control %>% 
+  group_by(cem_group) %>%
+  sample_frac(1) %>% 
+  slice(1:unique(n_treat))
+
+c.treat <- c.treat %>% 
+  mutate(n_sample = ifelse(n_treat <= n_control, n_treat, n_control )) %>%
+  group_by(cem_group) %>% 
+  sample_frac(1) %>% 
+  slice(1:unique(n_sample)) 
+
+c.match <- c.treat %>% 
+  select(-n_sample) %>% 
+  bind_rows(c.control)
+
+c.refined <- c.match
+# 
+# G0   G1
+# All       1035663 6151
+# Matched    146008 3884
+# Unmatched  889655 2267
+# .631 from matching df
+
+### using defaults for competitiveness
+
+df_cutpoints <- list(
+  white = quantile(matching_df$white, c(0,.2,.4,.6,.8,1)),
+  college = quantile(matching_df$college, c(0,.5,1)),
+  medhhinc = quantile(matching_df$medhhinc, c(0,.2,.4,.6,.8,1))
+  , comp_g_2014 = unique(quantile(matching_df$comp_g_2014, c(0, .05, seq(.1,.9, .1), .95, 1))),
+  comp_g_2016 = unique(quantile(matching_df$comp_g_2016, c(0, .05, seq(.1,.9, .1), .95, 1))),
+  comp_p_2014 = unique(quantile(matching_df$comp_p_2014, c(0, .05, seq(.1,.9, .1), .95, 1))),
+  comp_pp_2016 = unique(quantile(matching_df$comp_pp_2016, c(0, .05, seq(.1,.9, .1), .95, 1)))
+)
+
+
+c.out <- matching_df %>% select(-VANID) %>% 
+  mutate_at(vars(starts_with("g_"), starts_with(("p_"))), as.factor) %>% 
+  mutate(pp_2004 = as.factor(pp_2004),
+         pp_2008 = as.factor(pp_2008),
+         Race = as.factor(Race),
+         Sex = as.factor(Sex)) %>% 
+  cem(treatment = "pb", data = .,  
+      grouping = list(
+        g_early = list("0",c("1,2"), c("3", "4", "5"), c("6", "7", "8")), 
+        p_early = list("0",c("1,2"),  c("3", "4","5"), c("6", "7", "8"))
+      ), 
+      cutpoints = df_cutpoints,
+      verbose = 1) ### DON'T USE K2K - TOO MUCH MEMORY DEMAND. RANDOMLY DRAW FROM STRATA AFTER THE FACT
+
+c.out 
+c.out.refined_comp <- summary(c.out)
+
+
+### Creating the pairwise k2k match including one random sampled control for every pb voter  --------------------------------------------------------------------------------
+c.match <- data.frame(VANID = matching_df$VANID, pb = matching_df$pb, cem_group = c.out$strata, race =matching_df$Race)
+
+c.match <- c.match %>% 
+  group_by(cem_group) %>% 
+  mutate(n_treat = sum(pb),
+         n_control = sum(pb==0)) %>% 
+  filter(n_treat > 0 & n_control > 0)
+
+c.treat <- c.match %>% filter(pb == 1 & n_control > 0)
+
+c.control <- c.match %>% filter(pb == 0 & n_treat > 0)
+
+c.control <- c.control %>% 
+  group_by(cem_group) %>%
+  sample_frac(1) %>% 
+  slice(1:unique(n_treat))
+
+c.treat <- c.treat %>% 
+  mutate(n_sample = ifelse(n_treat <= n_control, n_treat, n_control )) %>%
+  group_by(cem_group) %>% 
+  sample_frac(1) %>% 
+  slice(1:unique(n_sample)) 
+
+c.match <- c.treat %>% 
+  select(-n_sample) %>% 
+  bind_rows(c.control)
+
+c.refined_comp <- c.match
+# G0   G1
+# All       1035663 6151
+# Matched     96877 3079
+# Unmatched  938786 3072
+# 50% matchee
+save(voterfile, c.granular, c.college, c.base_majmatch, c.refined, c.refined_comp, file = "matchcompare_gis.RData")
 
 #### Comparing estimates from the differently specified matches ------------------------------------------------------------------
 library(lme4)
