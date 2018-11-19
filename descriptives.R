@@ -42,7 +42,7 @@ pb2016 <- pbnyc %>% filter(districtCycle == 1 & voteYear == 2016)
 ### Limit it to only non-PB districts and VANIDS
 
 pbdistricts <- unique(pbnyc$district)
-rm(pbnyc)
+rm(pbnyc, pb2016)
 
 ## loading full voter file
 con <- dbConnect(MySQL(), username = username, password = password, dbname = db.name, host = hostname, port = port) #establish connection to DB
@@ -302,12 +302,12 @@ p_turnout <- ggplot(subset(turnout, Office != "Off Year"),
        y = "Turnout") +
   facet_grid(factor(Election, labels = c("General", "Primary")) ~ Office) +
   theme_minimal() +
-  theme(legend.position = "bottom",
+  theme(legend.position = "right",
         panel.spacing = unit(1, "lines")) +
   scale_x_date(date_labels = "%y") +
   scale_y_continuous(position = "left")
 
-pdf(file = "turnout.pdf", height = 3, width = 5)
+pdf(file = "Paper_text/Figs/turnout.pdf", height = 4, width = 7)
 p_turnout
 dev.off()
 
@@ -365,12 +365,12 @@ p3 <- ggplot(pb, aes(x = age)) +
   theme(strip.text.y = element_blank())
 
 
-pdf(file = "age2.pdf", height = 3.1, width = 2.75)
+pdf(file = "Paper_text/Figs/age2.pdf", height = 3.5, width = 2.75)
 
-grid.newpage()
-grid.draw(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"))
+# grid.newpage()
+grid.arrange(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"), left = "Persons (in 1,000s)")
+# grid.draw(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"))
 dev.off()
-
 
 ## College degree
 ##### still working here ####
@@ -428,7 +428,7 @@ p3 <- ggplot(pb, aes(x = college/100)) +
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
-pdf(file = "college2.pdf", height = 3.1, width = 2.75)
+pdf(file = "Paper_text/Figs/college2.pdf", height = 3.5, width = 2.75)
 
 grid.newpage()
 grid.draw(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"))
@@ -489,7 +489,7 @@ p3 <- ggplot(pb, aes(x = medhhinc)) +
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
-pdf(file = "hhinc2.pdf", height = 3.1, width = 2.75)
+pdf(file = "Paper_text/Figs/hhinc2.pdf", height = 3.5, width = 2.75)
 
 grid.newpage()
 grid.draw(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"))
@@ -552,13 +552,11 @@ p3 <- pb %>%
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
-pdf(file = "race2.pdf", height = 3.1, width = 2.75)
+pdf(file = "Paper_text/Figs/race2.pdf", height = 3.5, width = 2.75)
 
 grid.newpage()
-
 grid.draw(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"))
 dev.off()
-
 
 # library(ggpubr)
 # 
@@ -574,13 +572,14 @@ pbvotes <- read_csv("pbnyc_district_votes.csv")
 
 pbvotes <- pbvotes %>% filter(voters != 0)
 
-p <- ggplot(pbvotes, aes(x = voteYear, y = voters)) +
-  geom_point(alpha = 0.6) +
+p <- ggplot(pbvotes, aes(x = as.factor(voteYear), y = voters)) +
+  geom_point(alpha = 0.35) +
   labs(x = "Vote Year",
        y = "District PB Vote Count") +
-  scale_y_continuous(labels = comma)
+  scale_y_continuous(labels = comma) +
+  theme_minimal()
 
-pdf(file = "districtvotes.pdf", height = 3.5, width = 4.5)
+pdf(file = "Paper_text/Figs/districtvotes.pdf", height = 3.5, width = 4.5)
 p
 dev.off()
 
