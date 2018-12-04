@@ -9,6 +9,7 @@
 #################################################################################################################################################
 library(dplyr)
 library(tidyr)
+library(ggplot2)
 library(cobalt)
 library(stringr)
 
@@ -23,6 +24,7 @@ all_pb <- voterfile %>%
   mutate(inmatch = as.numeric(!is.na(cem_group))) %>% 
   dplyr::select(-cem_group, -pb_match, -agegroup, -DoR, -Ethnicity, -ED, -County, -countycode, -tract, -City, -State, 
                 -CensusTract, -RegStatus, -starts_with("pb_2"), -Zip, -CD, -SD, -HD, -DoB,
+                -black, -asian, -pacislander, -latinx, -mixed, -other,
                 -majority, -pbdistrict, -p_2011, -ends_with("_2012"), -ends_with("_2013"), -ends_with("_2014"), -ends_with("_2015"), -ends_with("_2016"), -ends_with("_2017"))
 # all_pb %>% filter(VANID %in% all_pb$VANID[duplicated(all_pb$VANID)]) %>% dplyr:::select(VANID, pb, cem_group, pb_match, race, n_treat, n_control) %>% arrange(VANID) %>% View
 # voterfile %>% filter(VANID %in% voterfile$VANID[duplicated(voterfile$VANID)]) %>% dplyr:::select(VANID, pb) %>% arrange(VANID) %>% View
@@ -37,12 +39,12 @@ vnames <- data.frame(old = names(all_pb), new = names(all_pb)) %>%
          new = ifelse(new == "college", "% College degree", new),
          new = ifelse(new == "medhhinc", "% Median household income", new),
          new = ifelse(new == "white", "% White", new),
-         new = ifelse(new == "black", "% Black", new),
-         new = ifelse(new == "asian", "% Asian", new),
-         new = ifelse(new == "pacislander", "% Pacific Islander", new),
-         new = ifelse(new == "latinx", "% Latinx", new),
-         new = ifelse(new == "mixed", "% Multiple races", new),
-         new = ifelse(new == "other", "% Other race", new),
+         # new = ifelse(new == "black", "% Black", new),
+         # new = ifelse(new == "asian", "% Asian", new),
+         # new = ifelse(new == "pacislander", "% Pacific Islander", new),
+         # new = ifelse(new == "latinx", "% Latinx", new),
+         # new = ifelse(new == "mixed", "% Multiple races", new),
+         # new = ifelse(new == "other", "% Other race", new),
          new = ifelse(new == "majmatch", "Majority race alignment", new),
          new = ifelse(new == "age", "Age", new),
          new = ifelse(new == "comp_g_2014", "Competitiveness 2014 general", new),
@@ -80,7 +82,7 @@ extractGroupBal <- function(cv, tt = "inmatch",  group, df){
   print(names(df))
   bt <- bal.tab(cv, treat = tt, data = df)
   bt$Balance %>% 
-    dplyr::select(M.0.Un, M.1.Un, Diff.Un) %>% 
+    dplyr::select(M.0.Un, M.1.Un, Diff.Un, M.0.Adj, M.1.Adj, Diff.Adj) %>% 
     tibble::rownames_to_column("variable")
 }
 all_pb %>% filter(Race == "H") %>% 
@@ -159,6 +161,7 @@ vf_matched <- c.college %>% dplyr::select(-n_treat, -n_control) %>%
   rename(comp_g_2016 = g_2016_comp, comp_g_2014 = g_2014_comp, comp_p_2014 = p_2014_comp, comp_pp_2016 = pp_2016_comp) %>% 
   dplyr::select(-DoR, -Ethnicity, -ED, -County, -countycode, -tract, -City, -State, 
                 -CensusTract, -RegStatus, -starts_with("pb_2"), -Zip, -CD, -SD, -HD, -DoB,
+                -black, -asian, -pacislander, -latinx, -mixed, -other,
                 -majority, -pbdistrict, -g_2012, -g_2013, -g_2014, -g_2015, -g_2016, -g_2017,  -p_2011,
                 -p_2012, -p_2013, -p_2014, -p_2015, -p_2016, -p_2017, -pp_2012, -pp_2016, -cem_group, -agegroup,
                 -race) %>% 
@@ -193,6 +196,7 @@ test <- c.college %>% dplyr::select(-n_treat, -n_control) %>%
   rename(comp_g_2016 = g_2016_comp, comp_g_2014 = g_2014_comp, comp_p_2014 = p_2014_comp, comp_pp_2016 = pp_2016_comp) %>% 
   dplyr::select(-DoR, -Ethnicity, -ED, -County, -countycode, -tract, -City, -State, 
                 -CensusTract, -RegStatus, -starts_with("pb_2"), -Zip, -CD, -SD, -HD, -DoB,
+                -black, -asian, -pacislander, -latinx, -mixed, -other,
                 -majority, -pbdistrict, -g_2012, -g_2013, -g_2014, -g_2015, -g_2016, -g_2017, 
                 -p_2012, -p_2013, -p_2014, -p_2015, -p_2016, -p_2017, -pp_2012, -pp_2016, -cem_group, -agegroup,
                 -race) %>% 
@@ -205,17 +209,53 @@ test <- test[c(sample(which(test$pb != 1 | test$insample != 1), 100000), which(t
 system.time(unout <- test %>% 
               select(-pb, -insample, -p_2011) %>% 
               bal.tab(treat = "pb",  data = test, weights = "insample", method = "matching", disp.means = TRUE, un = TRUE, quick = TRUE))
+
 bal.plot(test, "comp_g_2016", treat = "pb", data = test, mirror = T,weights = "insample", method = "matching", which= "both")
 bal.plot(test, "comp_g_2014", treat = "pb", data = test, mirror = T, weights = "insample", method = "matching", which= "both")
 bal.plot(test, "comp_p_2014", treat = "pb", data = test, mirror = T, weights = "insample", method = "matching", which= "both")
 bal.plot(test, "comp_pp_2016", treat = "pb", data = test, mirror = T, weights = "insample", method = "matching", which= "both")
 bal.plot(test, "high_school", treat = "pb", data = test, mirror = T, weights = "insample", method = "matching", which= "both")
-bal.plot(test, "college", treat = "pb", data = test, mirror = T,weights = "insample", method = "matching", which= "both")
+bal.plot(test, "college", treat = "pb", data = test, mirror = T,weights = "insample", method = "matching", which= "both", na.rm = T)
 bal.plot(test, "medhhinc", treat = "pb", data = test, mirror = T,weights = "insample", method = "matching", which= "both")
 bal.plot(test, "latinx", treat = "pb", data = test, mirror = T,weights = "insample", method = "matching", which= "both")
   
 love.plot(unout, threshold = .1, abs = FALSE, var.names = vnames, title = "", line = T) +theme(legend.position = "bottom")
 ggsave("Paper/Figs/match_balance.pdf", width = 6, height = 7.5, units = "in")     
+
+extractGroupBal <- function(cv, tt = "inmatch",  group, df){
+  cv[[tt]] <- NULL
+  cv[[group]] <- NULL
+  print(unique(df[[group]]))
+  print(names(df))
+  bt <- bal.tab(cv, treat = tt, data = df)
+  bt$Balance %>% 
+    dplyr::select(M.0.Un, M.1.Un, Diff.Un) %>% 
+    tibble::rownames_to_column("variable")
+  }
+  
+unout_byrace <- test %>% filter(insample == 1) %>% 
+  filter(Race %in% c("A", "B", "W")) %>% 
+  mutate(Sex = as.factor(Sex),
+         Race = as.factor(Race)) %>% 
+  group_by(Race) %>% 
+  do(extractGroupBal(cv = ., tt = "pb", group = "Race", df = .))
+
+ggplot(cbtout_byrace) + geom_point(aes(x = Diff.Un, y = variable, color = Race))# + facet_wrap(~Race)
+
+raceout <- list()
+for (r in c("A" ,"B", "W")){
+
+  raceout[[r]] <- test %>% filter(Race == r) %>% 
+    select(  -p_2011)  %>% 
+    bal.tab(., treat = "pb",  data = ., weights = "insample", method = "matching", disp.means = TRUE, un = TRUE, quick = TRUE)
+  
+  love.plot(raceout[[r]], threshold = .1, abs = FALSE, var.names = vnames, title = r, line = T) +theme(legend.position = "bottom")
+}
+
+love.plot(raceout[["A"]], threshold = .1, abs = FALSE, var.names = vnames, title = "A", line = T) +theme(legend.position = "bottom")
+love.plot(raceout[["B"]], threshold = .1, abs = FALSE, var.names = vnames, title = "B", line = T) +theme(legend.position = "bottom")
+love.plot(raceout[["W"]], threshold = .1, abs = FALSE, var.names = vnames, title = "W", line = T) +theme(legend.position = "bottom")
+
 
 ## competitiveness balance
 library(gridExtra)

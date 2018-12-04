@@ -1,5 +1,6 @@
 library(simcf)
 library(MASS)
+
 rm(lme_age2, lme_elig, lme_full, lme_full_ncollege, lme_lmed, lme_logit, lme_med2, lme_nosex, lme_nowhite, covar_lm, covar_logit)
 
 ##### Predictions with SIMCF
@@ -23,6 +24,7 @@ makeFEdummies <- function (unit, names = NULL) {
 load("vf_analysis.Rdata")
 source("create_pb_long.R")
 pb_long <- create_pb_long(vf_analysis)
+
 pb_long_orig <- pb_long # making a copy in case all is f'ed up and don't want to rerun all processing code
 
 pb_long <- pb_long_orig # resetting to the copied original 
@@ -841,7 +843,7 @@ preds_fd_gender$group <- "Gender"
 preds_fd_gender$level <- c("Male", "Female")
 
 preds_fd_wealth$group <- "Wealth"
-preds_fd_wealth$level <- c("Wealthy area", "Not wealthy area")
+preds_fd_wealth$level <- c("Higher income area", "Lower income area")
 
 preds_fd_educ$group <- "Education"
 preds_fd_educ$level <- c("More college degrees", "Fewer college degrees")
@@ -862,7 +864,7 @@ ggplot(preds_fd_plot, aes(x = group, y = pe, ymin = lower, ymax =upper, color = 
   geom_text(aes(y = -0.0025, label = level), hjust = 1, position = position_dodge(width = .6), size = 3) +
   geom_hline(aes(yintercept = 0)) +
   labs(x = "", y = "Change in predicted probability of voting") +
-  ylim(-.075,.25) +
+  ylim(-.075,.32) +
   coord_flip() +
   theme_minimal() +
   theme(legend.position = "none", 
@@ -977,7 +979,7 @@ preds_fd_gender$group <- "Gender"
 preds_fd_gender$level <- c("Male", "Female")
 
 preds_fd_wealth$group <- "Wealth"
-preds_fd_wealth$level <- c("Wealthy area", "Not wealthy area")
+preds_fd_wealth$level <- c("High income area", "Lower income area")
 
 preds_fd_educ$group <- "Education"
 preds_fd_educ$level <- c("More college degrees", "Fewer college degrees")
@@ -998,7 +1000,7 @@ ggplot(preds_fd_plot_2017, aes(x = group, y = pe, ymin = lower, ymax =upper, col
   geom_text(aes(y = -0.0025, label = level), hjust = 1, position = position_dodge(width = .6), size = 3) +
   geom_hline(aes(yintercept = 0)) +
   labs(x = "", y = "Change in predicted probability of voting in 2017 for \nnon-PB voters after hypothetical participation in PB") +
-  ylim(-.1,.31) +
+  ylim(-.075,.4) +
   coord_flip() +
   theme_minimal() +
   theme(legend.position = "none")
@@ -1021,7 +1023,7 @@ ggplot(preds_fd_comb, aes(x = group, y = pe, ymin = lower, ymax =upper, color = 
   scale_color_discrete(guide = FALSE) +
   labs(x = "", shape = "Year", linetype = "Year",
        y = "Change in predicted probability of voting for \nnon-PB voters after counterfactual participation in PB") +
-  ylim(-.1,.31) +
+  ylim(-.1,.4) +
   coord_flip() +
   theme_minimal() +
   theme(legend.position = "top")
@@ -1036,20 +1038,37 @@ modelist <- list(lme_base_simcf, lme_race_simcf, lme_majmatch_simcf, lme_gender_
 # stargazer(lme_base_simcf, lme_race_simcf, lme_gender_simcf, lme_educ_simcf, lme_wealth_simcf, lme_youth_simcf)
 stargazer(modelist, 
           out = "Paper_text/Tables/subgroups_SG.tex", label = "coefficients",
+          column.labels = c("Base", "*Race", " *Maj. Match", " *Gender", "*Education", "*Income", "*Youth"),
+          # model.numbers = FALSE,
+          order = c("pb", "after_pb", "election_typep", "election_typepp", 
+                    "RaceB", "RaceA",  "RaceH", "RaceU", "Female", "age", "I(age^2)", "I(age_at_vote < 18)TRUE", 
+                    "college_pct", "medhhinc_10k", "majmatchTRUE", 
+                    "after_pb:race_B", "after_pb:race_A", "after_pb:race_H", "after_pb:race_U", 
+                    "after_pb:majmatch", "after_pb:Female", "after_pb:college_pct", "after_pb:medhhinc_10k", "after_pb:youth"),
+          covariate.labels = c("PB district", "After PB", "Primary election", "Pres. Primary", 
+                               "Black", "Asian", "Hispanic", "Unknown", "Female", "Age in years", "Age\\textsuperscript{2}", "18+ at vote", 
+                               "\\% college educated", "Median HH income", "Majority Race",
+                               "After PB * Black", "After PB * Asian", "After PB * Hispanic", "After PB * Unknown",
+                               "After PB * Majority match", "After PB * Female", 
+                               "After PB * \\% college", "After PB * Median HH. inc.", "After PB * Youth"),
           dep.var.labels.include = FALSE, dep.var.caption = "",
           digit.separator = "", digits = 2, digits.extra = 0, align = TRUE,
           intercept.bottom = TRUE, no.space = TRUE,
           single.row = TRUE, float.env = "sidewaystable",
           column.sep.width = "-30pt",
-          star.char = "*", star.cutoffs = .05,
           omit = c("year_20\\d\\d$",
                    "year_20\\d\\d\\:|:year_20\\d\\d$"),
           add.lines = list(
-            c("Year fixed effects?", rep("Yes", length(modelist))),
-              c("Subgroup time trends?", "No", rep("Yes", length(modelist)-1))),
+            c("Year fixed effects?", rep("\\multicolumn{1}{c}{Yes}", length(modelist))),
+              c("Subgroup time trends?", "\\multicolumn{1}{c}{None}", "\\multicolumn{1}{c}{Race}", "\\multicolumn{1}{c}{Maj. Match}", "\\multicolumn{1}{c}{Gender}", "\\multicolumn{1}{c}{Education}", "\\multicolumn{1}{c}{Income}", "\\multicolumn{1}{c}{Youth}")),
           # omit.labels = c("Year fixed effects?",
           #                 "Year*Covariate interactions?"),
-          keep.stat = c("n", "aic", "bic", "n")
+          keep.stat = c("n", "aic", "bic", "n"),
+          star.char = "*", star.cutoffs = 0.05,
+          notes = "\\parbox[t]{\\textwidth}{\\footnotesize \\textit{Note:} ``Triple difference'' regression results, including interactions conditioning treatment effect by designated covariates, from multilevel mixed effect logistic models of individual turnout in a given election, including random effects for individual and council districts.  Standard errors reported in parentheses and statistical significance at $p<0.05$: $^{*}$.}",
+          notes.label = "",
+          notes.align = "l",
+          notes.append = FALSE
           )
 
 

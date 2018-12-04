@@ -167,6 +167,8 @@ lme_tract  <- glmer(logit_tract_form, data = pb_long, family = binomial(), nAGQ 
 lme_final_form <- turned_out ~ pb + after_pb + Race + Female + as.factor(year) + election_type + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + college_pct + majmatch + (1 | VANID) + (1|NYCCD)
 lme_final <- glmer(lme_final_form, data = pb_long, family = binomial(), nAGQ = 0) 
 
+margins::dydx(pb_long, lme_final, "after_pb", change = c(0,1))[[1]] %>% mean
+
 # lme_final <- lme_nowhite
 # 
 library(texreg)
@@ -175,10 +177,24 @@ screenreg(list(lme_minimal, lme_demog, lme_tract, lme_final))
 library(stargazer)
 stargazer((list(lme_minimal, lme_demog, lme_tract, lme_final)),
           out = "Paper_text/Tables/mainregs.tex", label = "main_results",
+          title = "Individual voter turnout difference in difference regression results: no interactions",
+          column.labels = c("Minimal", "Demog.", "Tract", "Majority Match"),
+          order = c("pb", "after_pb", "election_typep", "election_typepp", 
+                    "RaceB", "RaceA", "RaceH", "RaceU", "Female", "age", "I(age^2)", "I(age_at_vote < 18)TRUE", 
+                    "college_pct", "medhhinc_10k", "majmatchTRUE"),
+          covariate.labels = c("PB district", "After PB", "Primary election", "Pres. Primary", 
+                               "Black", "Asian", "Hispanic", "Unknown", "Female", "Age in years", "Age\\textsuperscript{2}", "18+ at vote", 
+                               "\\% college educated", "Median HH income", "Majority Race"),
           dep.var.labels.include = FALSE, dep.var.caption = "",
           digit.separator = "",intercept.bottom = TRUE, no.space = TRUE,
           omit = c("year"), omit.labels = c("Year fixed effects?"), 
-          keep.stat = c("n", "aic", "bic", "n"))
+          keep.stat = c("n", "aic", "bic", "n"),
+          star.char = "*", star.cutoffs = 0.05,
+          align = TRUE,
+          notes = "\\parbox[t]{.85\\textwidth}{\\footnotesize \\textit{Note:} Difference in difference regression results from multilevel mixed effect logistic models of individual turnout in a given election, including random effects for individual and council districts.  Standard errors reported in parentheses and statistical significance at $p<0.05$ indicated by $^{*}$.}",
+          notes.label = "",
+          notes.align = "l",
+          notes.append = FALSE)
 
 ## explorign some basic predictions from thi
 #ind effects - confirming that they're not correlated with race

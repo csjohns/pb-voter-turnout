@@ -1,3 +1,4 @@
+library(cem)
 ## Repeating CEM with different specifications
 
 ## The one I used last - as was + majmatch
