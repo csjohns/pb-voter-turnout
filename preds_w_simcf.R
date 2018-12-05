@@ -249,10 +249,10 @@ logit_educ_form <-  turned_out ~ pb + after_pb + election_p + election_pp +
 
 
 ################################################################################################################################################
-######################## DISAGGREGATE BY wealthy ---------------------------------------------------------------------------------------------------------
+######################## DISAGGREGATE BY income ---------------------------------------------------------------------------------------------------------
 ### Estimated model
-#pb_long <- pb_long %>% mutate(wealthy = as.numeric(medhhinc_10k > quantile(medhhinc_10k, probs = .5)))
-logit_wealth_simcf <- turned_out ~ pb + after_pb + election_p + election_pp +
+#pb_long <- pb_long %>% mutate(income = as.numeric(medhhinc_10k > quantile(medhhinc_10k, probs = .5)))
+logit_income_simcf <- turned_out ~ pb + after_pb + election_p + election_pp +
   year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
   race_B + race_A + race_H + race_U + 
   Female + age + I(age^2) + I(age_at_vote < 18) + 
@@ -260,10 +260,10 @@ logit_wealth_simcf <- turned_out ~ pb + after_pb + election_p + election_pp +
   medhhinc_10k*after_pb +
   medhhinc_10k*year_2009 + medhhinc_10k*year_2010 + medhhinc_10k*year_2011 + medhhinc_10k*year_2012 + medhhinc_10k*year_2013 + medhhinc_10k*year_2014 + medhhinc_10k*year_2015 + medhhinc_10k*year_2016 + medhhinc_10k*year_2016  + 
   (1 | VANID) + (1 | NYCCD)
-lme_wealth_simcf <- glmer(logit_wealth_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients),
+lme_income_simcf <- glmer(logit_income_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients),
 
 ### Formula for simcf
-logit_wealth_form <-  turned_out ~ pb + after_pb + election_p + election_pp +
+logit_income_form <-  turned_out ~ pb + after_pb + election_p + election_pp +
   year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
   race_B + race_A + race_H + race_U + 
   Female + age + I(age^2) + I(age_at_vote < 18) + 
@@ -600,17 +600,17 @@ preds_educ %>% dplyr::select(after_pb, college_pct, pe, lower, upper) %>%
 ggsave("Paper/Figs/byeduc.pdf", width = 5, height = 4)
 
 
-### Wealth in 2016 --------------------------------------------------------------------------------------------
-wealth_levels <- quantile(pb_long$medhhinc_10k, probs = c(.25, .75))
-names(wealth_levels) <- c("less wealthy", "more wealthy")
+### Income in 2016 --------------------------------------------------------------------------------------------
+income_levels <- quantile(pb_long$medhhinc_10k, probs = c(.25, .75))
+names(income_levels) <- c("lower income", "higher income")
 
 sims <- 10000
-pe <- fixef(lme_wealth_simcf)
-vc <- vcov(lme_wealth_simcf) 
+pe <- fixef(lme_income_simcf)
+vc <- vcov(lme_income_simcf) 
 simbetas <- mvrnorm(sims, pe, vc)
 
-nscen <- length(wealth_levels)*2
-xhyp <- cfMake(logit_wealth_form, pb_long, nscen = nscen, f = "mean")
+nscen <- length(income_levels)*2
+xhyp <- cfMake(logit_income_form, pb_long, nscen = nscen, f = "mean")
 
 simyear <- "2016"
 
@@ -639,33 +639,33 @@ for (i in 1:(nscen/2)){
 }
 
 for (i in c(1,3)){
-  xhyp <- cfChange(xhyp, "medhhinc_10k", x = wealth_levels["more wealthy"], xpre = wealth_levels["more wealthy"], scen = i)
+  xhyp <- cfChange(xhyp, "medhhinc_10k", x = income_levels["higher income"], xpre = income_levels["higher income"], scen = i)
 }
 for (i in c(2,4)){
-  xhyp <- cfChange(xhyp, "medhhinc_10k", x = wealth_levels["less wealthy"], xpre = wealth_levels["less wealthy"], scen = i)
+  xhyp <- cfChange(xhyp, "medhhinc_10k", x = income_levels["lower income"], xpre = income_levels["lower income"], scen = i)
 }
 
-xhyp_wealth <- xhyp
+xhyp_income <- xhyp
 rm(xhyp)
 
-yhyp_wealth <- logitsimev(xhyp_wealth, simbetas)
+yhyp_income <- logitsimev(xhyp_income, simbetas)
 
-yhyp_fd_wealth <- logitsimfd(xhyp_wealth, simbetas)
+yhyp_fd_income <- logitsimfd(xhyp_income, simbetas)
 
-preds_wealth <-  cbind(xhyp_wealth$x, as.data.frame(yhyp_wealth))
-preds_fd_wealth <- cbind(xhyp_wealth$x[3:4,], as.data.frame(yhyp_fd_wealth)[3:4,])
+preds_income <-  cbind(xhyp_income$x, as.data.frame(yhyp_income))
+preds_fd_income <- cbind(xhyp_income$x[3:4,], as.data.frame(yhyp_fd_income)[3:4,])
 
-preds_wealth %>% dplyr::select(after_pb, medhhinc_10k, pe, lower, upper) %>% 
+preds_income %>% dplyr::select(after_pb, medhhinc_10k, pe, lower, upper) %>% 
   mutate(after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB")),
-         medhhinc_10k = factor(medhhinc_10k, levels = wealth_levels, labels = c("Less wealthy area", "More wealthy area"))) %>% 
+         medhhinc_10k = factor(medhhinc_10k, levels = income_levels, labels = c("Lower income area", "Higher income area"))) %>% 
   ggplot(aes(y = pe, ymin = lower, ymax = upper, x = medhhinc_10k)) + 
   # geom_segment(aes(xend = Race, y = 0, yend = preds, color = as.factor(after_pb)))+
   geom_pointrange(aes(color = as.factor(after_pb))) +
-  labs(title = paste0("By wealth: predicted probability of voting in general election in ", simyear, "\n before and after PB (in a non-PB district)"), 
+  labs(title = paste0("By income: predicted probability of voting in general election in ", simyear, "\n before and after PB (in a non-PB district)"), 
        x = "", y = "Predicted probability of Voting", color = "") +
   coord_flip() +
   theme_minimal()
-ggsave("Paper/Figs/bywealth.pdf", width = 5, height = 4)
+ggsave("Paper/Figs/byincome.pdf", width = 5, height = 4)
 
 ### Youth in 2016 ------------------------------------------------------------------------------------------------
 sims <- 10000
@@ -825,15 +825,15 @@ ggsave("Paper/Figs/byyouth_only18+.pdf", width = 5, height = 4)
 #                            col = "red",
 #                            plot = 2)
 #   
-# trace_wealthy <- ropeladder(x = preds_fd_wealthy$pe,
-#                          lower = preds_fd_wealthy$lower,
-#                          upper = preds_fd_wealthy$upper,
-#                          labels = c("Wealthy area", "Not wealthy area"),
+# trace_incomey <- ropeladder(x = preds_fd_incomey$pe,
+#                          lower = preds_fd_incomey$lower,
+#                          upper = preds_fd_incomey$upper,
+#                          labels = c("Higher income area", "Lower income area"),
 #                          col = "blue",
 #                          shadowrow = TRUE,
 #                          plot = 3)
 # 
-# tile(trace_race, trace_gender, trace_wealthy, RxC = c(3,1))
+# tile(trace_race, trace_gender, trace_incomey, RxC = c(3,1))
 
 #### trying with ggplot
 preds_fd_race$group <- "Race"
@@ -842,8 +842,8 @@ preds_fd_race$level <- c("White", "Black", "Hispanic", "Asian", "Unknown")
 preds_fd_gender$group <- "Gender"
 preds_fd_gender$level <- c("Male", "Female")
 
-preds_fd_wealth$group <- "Wealth"
-preds_fd_wealth$level <- c("Higher income area", "Lower income area")
+preds_fd_income$group <- "Income"
+preds_fd_income$level <- c("Higher income area", "Lower income area")
 
 preds_fd_educ$group <- "Education"
 preds_fd_educ$level <- c("More college degrees", "Fewer college degrees")
@@ -857,7 +857,7 @@ preds_fd_majmatch$level <- c("Majority race", "Not Majority race")
 
 
 
-preds_fd_plot <- bind_rows(preds_fd_race, preds_fd_gender, preds_fd_wealth, preds_fd_youth, preds_fd_educ, preds_fd_majmatch)
+preds_fd_plot <- bind_rows(preds_fd_race, preds_fd_gender, preds_fd_income, preds_fd_youth, preds_fd_educ, preds_fd_majmatch)
 
 ggplot(preds_fd_plot, aes(x = group, y = pe, ymin = lower, ymax =upper, color = group, group = level)) +
   geom_pointrange(position = position_dodge(width = .6)) +
@@ -939,18 +939,18 @@ yhyp_fd_educ <- logitsimfd(xhyp_educ, simbetas)
 preds_educ <-  cbind(xhyp_educ$x, as.data.frame(yhyp_educ))
 preds_fd_educ <- cbind(xhyp_educ$x[3:4,], as.data.frame(yhyp_fd_educ)[3:4,])
 
-## preds by wealthy
-pe <- fixef(lme_wealth_simcf)
-vc <- vcov(lme_wealth_simcf) 
+## preds by incomey
+pe <- fixef(lme_income_simcf)
+vc <- vcov(lme_income_simcf) 
 simbetas <- mvrnorm(sims, pe, vc)
 
-xhyp_wealth <- xhyp_update(xhyp_wealth, simyear, oldsimyear)
+xhyp_income <- xhyp_update(xhyp_income, simyear, oldsimyear)
 
-yhyp_wealth <- logitsimev(xhyp_wealth, simbetas)
-yhyp_fd_wealth <- logitsimfd(xhyp_wealth, simbetas)
+yhyp_income <- logitsimev(xhyp_income, simbetas)
+yhyp_fd_income <- logitsimfd(xhyp_income, simbetas)
 
-preds_wealth <-  cbind(xhyp_wealth$x, as.data.frame(yhyp_wealth))
-preds_fd_wealth <- cbind(xhyp_wealth$x[3:4,], as.data.frame(yhyp_fd_wealth)[3:4,])
+preds_income <-  cbind(xhyp_income$x, as.data.frame(yhyp_income))
+preds_fd_income <- cbind(xhyp_income$x[3:4,], as.data.frame(yhyp_fd_income)[3:4,])
 
 ### youth
 
@@ -978,8 +978,8 @@ preds_fd_race$level <- c("White", "Black", "Hispanic", "Asian", "Unknown")
 preds_fd_gender$group <- "Gender"
 preds_fd_gender$level <- c("Male", "Female")
 
-preds_fd_wealth$group <- "Wealth"
-preds_fd_wealth$level <- c("High income area", "Lower income area")
+preds_fd_income$group <- "Income"
+preds_fd_income$level <- c("Higher income area", "Lower income area")
 
 preds_fd_educ$group <- "Education"
 preds_fd_educ$level <- c("More college degrees", "Fewer college degrees")
@@ -992,7 +992,7 @@ preds_fd_youth$level <- c("Under 30", "30 and older")
 preds_fd_majmatch$group <- "Majority Race"
 preds_fd_majmatch$level <- c("Majority race", "Not Majority race")
 
-preds_fd_plot_2017 <- bind_rows(preds_fd_race, preds_fd_gender, preds_fd_wealth, preds_fd_youth, preds_fd_educ, preds_fd_majmatch)
+preds_fd_plot_2017 <- bind_rows(preds_fd_race, preds_fd_gender, preds_fd_income, preds_fd_youth, preds_fd_educ, preds_fd_majmatch)
 
 
 ggplot(preds_fd_plot_2017, aes(x = group, y = pe, ymin = lower, ymax =upper, color = group, group = level)) +
@@ -1023,34 +1023,36 @@ ggplot(preds_fd_comb, aes(x = group, y = pe, ymin = lower, ymax =upper, color = 
   scale_color_discrete(guide = FALSE) +
   labs(x = "", shape = "Year", linetype = "Year",
        y = "Change in predicted probability of voting for \nnon-PB voters after counterfactual participation in PB") +
-  ylim(-.1,.4) +
+  ylim(-.08,.3) +
   coord_flip() +
   theme_minimal() +
   theme(legend.position = "top")
-ggsave("Paper/Figs/group_fds_bothyears.pdf", width = 6.75, height = 6)
+ggsave("Paper_text/Figs/group_fds_bothyears.pdf", width = 6.75, height = 6.5)
 
 
 ### Fit statistics for each ------------------------------------------------------------------------------------
 library(stargazer)
-library(texreg)
 
-modelist <- list(lme_base_simcf, lme_race_simcf, lme_majmatch_simcf, lme_gender_simcf, lme_educ_simcf, lme_wealth_simcf, lme_youth_simcf)
-# stargazer(lme_base_simcf, lme_race_simcf, lme_gender_simcf, lme_educ_simcf, lme_wealth_simcf, lme_youth_simcf)
+modelist <- list(lme_base_simcf, lme_race_simcf, lme_majmatch_simcf, lme_gender_simcf, lme_educ_simcf, lme_income_simcf, lme_youth_simcf)
+# stargazer(lme_base_simcf, lme_race_simcf, lme_gender_simcf, lme_educ_simcf, lme_income_simcf, lme_youth_simcf)
 stargazer(modelist, 
           out = "Paper_text/Tables/subgroups_SG.tex", label = "coefficients",
           column.labels = c("Base", "*Race", " *Maj. Match", " *Gender", "*Education", "*Income", "*Youth"),
-          # model.numbers = FALSE,
-          order = c("pb", "after_pb", "election_typep", "election_typepp", 
-                    "RaceB", "RaceA",  "RaceH", "RaceU", "Female", "age", "I(age^2)", "I(age_at_vote < 18)TRUE", 
-                    "college_pct", "medhhinc_10k", "majmatchTRUE", 
-                    "after_pb:race_B", "after_pb:race_A", "after_pb:race_H", "after_pb:race_U", 
-                    "after_pb:majmatch", "after_pb:Female", "after_pb:college_pct", "after_pb:medhhinc_10k", "after_pb:youth"),
-          covariate.labels = c("PB district", "After PB", "Primary election", "Pres. Primary", 
-                               "Black", "Asian", "Hispanic", "Unknown", "Female", "Age in years", "Age\\textsuperscript{2}", "18+ at vote", 
+          model.numbers = TRUE,
+          order = c("^pb$", "^after\\_pb$", "^election\\_p$", "^election\\_pp$",
+                    "^race\\_B$", "^race\\_A$",  "^race\\_H$", "^race\\_U$",
+                    "^Female$", "^age$", "^I\\(age\\^2\\)$", "I\\(age\\_at\\_vote < 18\\)TRUE", 
+                    "^college\\_pct$", "^medhhinc\\_10k$", "^majmatchTRUE$",
+                    "^after\\_pb\\:race\\_B$", "^after\\_pb\\:race\\_A$", "^after\\_pb\\:race\\_H$", "^after\\_pb\\:race\\_U$",
+                    "^after\\_pb\\:majmatchTRUE$", "^after\\_pb\\:Female$", "^after\\_pb\\:college\\_pct$",
+                      "^after\\_pb\\:medhhinc\\_10k$", "^youth$", "^after\\_pb\\:youth$"),
+          covariate.labels = c("PB district", "After PB", "Primary election", "Pres. Primary",
+                               "Black", "Asian", "Hispanic", "Race Unknown",
+                               "Female", "Age in years", "Age\\textsuperscript{2}", "18+ at vote", 
                                "\\% college educated", "Median HH income", "Majority Race",
                                "After PB * Black", "After PB * Asian", "After PB * Hispanic", "After PB * Unknown",
-                               "After PB * Majority match", "After PB * Female", 
-                               "After PB * \\% college", "After PB * Median HH. inc.", "After PB * Youth"),
+                               "After PB * Majority match", "After PB * Female",
+                               "After PB * \\% college", "After PB * Median HH. inc.", "Age < 30", "After PB * Age < 30"),
           dep.var.labels.include = FALSE, dep.var.caption = "",
           digit.separator = "", digits = 2, digits.extra = 0, align = TRUE,
           intercept.bottom = TRUE, no.space = TRUE,

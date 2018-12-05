@@ -19,8 +19,8 @@ library(margins)
 source("create_pb_long.R")
 
 ### Creating/loading matched datasets
-# source("pub_vf_matching.R")
-load("vf_analysis.RData")
+source("pub_vf_matching.R")
+# load("vf_analysis.RData")
 
 ####  replicating transformation and first regressions with the matched data -------------------------------------------------------------------------------------
 
@@ -170,18 +170,22 @@ lme_final <- glmer(lme_final_form, data = pb_long, family = binomial(), nAGQ = 0
 
 ### Table / effect output for paper. "mainregs.tex" ------------------------------------------------------------------------------------------------------------------------------------------------------ 
 ## calculating average effect from final model
-margins::dydx(pb_long, lme_final, "after_pb", change = c(0,1))[[1]] %>% mean
+meaneffect <- margins::dydx(pb_long, lme_final, "after_pb", change = c(0,1))[[1]] %>% mean() 
+print(meaneffect)
+save(lme_minimal, lme_demog, lme_tract, lme_final, meaneffect, file = "mainresults.RData")
 
 library(stargazer)
 stargazer((list(lme_minimal, lme_demog, lme_tract, lme_final)),
           out = "Paper_text/Tables/mainregs.tex", label = "main_results",
           title = "Individual voter turnout difference in difference regression results: no interactions",
           column.labels = c("Minimal", "Demog.", "Tract", "Majority Match"),
-          order = c("pb", "after_pb", "election_typep", "election_typepp", 
-                    "RaceB", "RaceA", "RaceH", "RaceU", "Female", "age", "I(age^2)", "I(age_at_vote < 18)TRUE", 
-                    "college_pct", "medhhinc_10k", "majmatchTRUE"),
+          order = c("^pb$", "^after\\_pb$", "^election\\_p$", "^election\\_pp$",
+                    "^race\\_B$", "^race\\_A$",  "^race\\_H$", "^race\\_U$",
+                    "^Female$", "^age$", "^I\\(age\\^2\\)$", "I\\(age\\_at\\_vote < 18\\)TRUE",
+                    "^college\\_pct$", "^medhhinc\\_10k$", "^majmatchTRUE$"),
           covariate.labels = c("PB district", "After PB", "Primary election", "Pres. Primary", 
-                               "Black", "Asian", "Hispanic", "Unknown", "Female", "Age in years", "Age\\textsuperscript{2}", "18+ at vote", 
+                               "Black", "Asian", "Hispanic", "Race Unknown", "Female", 
+                               "Age in years", "Age\\textsuperscript{2}", "18+ at vote", 
                                "\\% college educated", "Median HH income", "Majority Race"),
           dep.var.labels.include = FALSE, dep.var.caption = "",
           digit.separator = "",intercept.bottom = TRUE, no.space = TRUE,

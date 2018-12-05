@@ -42,31 +42,32 @@ pb2016 <- pbnyc %>% filter(districtCycle == 1 & voteYear == 2016)
 
 pbdistricts <- unique(pbnyc$district)
 rm(pbnyc)
-
-## loading full voter file
-con <- dbConnect(MySQL(), username = username, password = password, dbname = db.name, host = hostname, port = port) #establish connection to DB
-voterfile <- glue_sql("SELECT * FROM voterfile52018 
-                      WHERE RegistrationStatusName NOT IN ('Applicant', 'Dropped', 'Unregistered')
-                      AND DateReg <> ''
-                      AND (CityCouncilName IS NULL 
-                      OR CityCouncilName NOT IN ({nyccds*}))",
-                      nyccds = pbdistricts,
-                      .con = con) %>% 
-  dbGetQuery(con, .)
-dbDisconnect(con)
-rm(password, username, hostname, db.name, port) # if you want to remove the credentials from your environment 
-save(voterfile, file = "voterfile_noPB.Rdata ")
-voterfile <- voterfile %>% 
-  filter(DateReg != "" & !`Voter File VANID` %in% pb$VANID) 
+# 
+# ## loading full voter file
+# con <- dbConnect(MySQL(), username = username, password = password, dbname = db.name, host = hostname, port = port) #establish connection to DB
+# voterfile <- glue_sql("SELECT * FROM voterfile52018 
+#                       WHERE RegistrationStatusName NOT IN ('Applicant', 'Dropped', 'Unregistered')
+#                       AND DateReg <> ''
+#                       AND (CityCouncilName IS NULL 
+#                       OR CityCouncilName NOT IN ({nyccds*}))",
+#                       nyccds = pbdistricts,
+#                       .con = con) %>% 
+#   dbGetQuery(con, .)
+# dbDisconnect(con)
+# rm(password, username, hostname, db.name, port) # if you want to remove the credentials from your environment 
+# save(voterfile, file = "voterfile_noPB.Rdata ")
+# voterfile <- voterfile %>% 
+#   filter(DateReg != "" & !`Voter File VANID` %in% pb$VANID) 
 
 ## adding missing district info
-source("vf_gis_nyccdmatch.R")
+set.seed(92018)
+# source("vf_gis_nyccdmatch.R")
 source("pb_cleanup_addnyccd_foranalysis.R")
 
 ## remove districts in pbdistricts
-voterfile <- voterfile %>% filter(!CityCouncilName %in% pbdistricts & !is.na(CityCouncilName))
-save(voterfile, file = "voterfile_noPB_gis.Rdata")
-# load("voterfile_noPB_gis.Rdata")
+# voterfile <- voterfile %>% filter(!CityCouncilName %in% pbdistricts & !is.na(CityCouncilName))
+# save(voterfile, file = "voterfile_noPB_gis.Rdata")
+load("voterfile_noPB_gis.Rdata")
 
 # voterfile <- fread("PersonFile20180426-11056504994/PersonFile20180426-11056504994.txt")
 
@@ -204,7 +205,6 @@ save(voterfile, matching_df, file = "vf_dataformatching.RData")
 ### this uses the 'college' model from vf_matching_spectest.R.  Use that file if you need to demonstrate the fit more generally
 
 set.seed(12018)
-rm(c.match, c.out)
 
 df_cutpoints <- list(
   white = quantile(matching_df$white, c(0,.2,.4,.6,.8,1)),
