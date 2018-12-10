@@ -1038,7 +1038,7 @@ modelist <- list(lme_base_simcf, lme_race_simcf, lme_majmatch_simcf, lme_gender_
 # stargazer(lme_base_simcf, lme_race_simcf, lme_gender_simcf, lme_educ_simcf, lme_income_simcf, lme_youth_simcf)
 stargazer(modelist, 
           out = "Paper_text/Tables/subgroups_SG.tex", label = "coefficients",
-          title = "Individual voter turnout difference in difference regression results: including sub-group interactions for `triple-difference' results",
+          title = "Individual voter turnout difference-in-difference regression results: including sub-group interactions for `triple-difference' results",
           column.labels = c("Base", "*Race", " *Maj. Match", " *Gender", "*Education", "*Income", "*Youth"),
           model.numbers = TRUE,
           order = c("^pb$", "^after\\_pb$", "^election\\_p$", "^election\\_pp$",
