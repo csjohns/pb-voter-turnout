@@ -201,6 +201,7 @@ matching_df <- voterfile %>%
   na.omit()
 
 save(voterfile, matching_df, file = "vf_dataformatching.RData")
+# load("vf_dataformatching.RData")
 ### Implementing CEM - defining cutpoints for continuous variables  --------------------------------------------------------------------------------
 ### this uses the 'college' model from vf_matching_spectest.R.  Use that file if you need to demonstrate the fit more generally
 
@@ -263,6 +264,8 @@ c.match <- c.treat %>%
   bind_rows(c.control)
 
 c.college <- c.match
+
+#3702 match here, 
 
 ### creating analysis DF by joining voterfile to the CEM match output - effectively returns voterfile info filtered to matched dataset -----
 vf_analysis <- c.college %>% dplyr::select(-n_treat, -n_control) %>% 

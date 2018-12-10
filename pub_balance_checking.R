@@ -16,13 +16,15 @@ library(stringr)
 
 all_pb <- voterfile %>% 
   filter(pb == 1) %>% 
-  filter(!is.na(g_2014_comp) & !is.na(g_2016_comp) & !is.na(p_2014_comp) & !is.na(pp_2016_comp) & !is.na(high_school) & !is.na(majmatch)) %>% 
+  filter(!is.na(g_2014_comp) & !is.na(g_2016_comp) & !is.na(p_2014_comp) & !is.na(pp_2016_comp) & !is.na(high_school) & !is.na(majmatch) & !is.na(medhhinc)) %>% 
   left_join(., dplyr::select(c.college, VANID, pb_match = pb, cem_group)) %>% 
   mutate(inmatch = as.numeric(!is.na(cem_group))) %>% 
   dplyr::select(-cem_group, -pb_match, -agegroup, -DoR, -Ethnicity, -ED, -County, -countycode, -tract, -City, -State, 
                 -CensusTract, -RegStatus, -starts_with("pb_2"), -Zip, -CD, -SD, -HD, -DoB,
                 -black, -asian, -pacislander, -latinx, -mixed, -other,
-                -majority, -pbdistrict, -p_2011, -ends_with("_2012"), -ends_with("_2013"), -ends_with("_2014"), -ends_with("_2015"), -ends_with("_2016"), -ends_with("_2017"))
+                -majority, -pbdistrict, -p_2011, 
+                -ends_with("_2000"), -ends_with("_2001"), -ends_with("_2002"), -ends_with("_2003"), -ends_with("_2004"), -ends_with("_2005"), -ends_with("_2006"),  -ends_with("_2007"), 
+                -ends_with("_2012"), -ends_with("_2013"), -ends_with("_2014"), -ends_with("_2015"), -ends_with("_2016"), -ends_with("_2017"))
 # all_pb %>% filter(VANID %in% all_pb$VANID[duplicated(all_pb$VANID)]) %>% dplyr:::select(VANID, pb, cem_group, pb_match, race, n_treat, n_control) %>% arrange(VANID) %>% View
 # voterfile %>% filter(VANID %in% voterfile$VANID[duplicated(voterfile$VANID)]) %>% dplyr:::select(VANID, pb) %>% arrange(VANID) %>% View
 
@@ -55,9 +57,10 @@ cbtout <- dplyr::select(all_pb, -VANID, -NYCCD, -pb, -inmatch) %>%
   mutate(Sex = as.factor(Sex),
          Race = as.factor(Race)) %>% 
   bal.tab(treat = "inmatch", data = all_pb)
-# bal.plot(dplyr::select(all_pb,  -VANID, -NYCCD, -pb, -inmatch), treat = "inmatch", data = all_pb)
 
-love.plot(cbtout, threshold = .1, abs = FALSE, var.names = vnames, title = "") + theme(legend.position = "none")       
+love.plot(cbtout, threshold = .1, abs = FALSE, var.names = vnames, title = "") + 
+  theme(legend.position = "none")+     
+  xlab("Mean differences matched-unmatched")
 ggsave("Paper_text/Figs/pb_match_compare.pdf", width = 5, height = 7, units = "in")
 
 #looks like we have a harder time matching older, non-white/minority race historically more frequent voters, 
@@ -103,21 +106,23 @@ ggsave("Paper_text/Figs/pb_match_compare.pdf", width = 5, height = 7, units = "i
 test <- c.college %>% dplyr::select(-n_treat, -n_control) %>% 
   mutate(insample = 1) %>% 
   full_join(voterfile) %>%
+  filter(!is.na(g_2014_comp) & !is.na(g_2016_comp) & !is.na(p_2014_comp) & !is.na(pp_2016_comp) & !is.na(high_school) & !is.na(majmatch) & !is.na(medhhinc) & !is.na(age)) %>% 
   group_by() %>% 
   mutate(insample = replace_na(insample, 0)) %>% 
   group_by() %>% 
-  rename(comp_g_2016 = g_2016_comp, comp_g_2014 = g_2014_comp, comp_p_2014 = p_2014_comp, comp_pp_2016 = pp_2016_comp) %>% 
+  # rename(comp_g_2016 = g_2016_comp, comp_g_2014 = g_2014_comp, comp_p_2014 = p_2014_comp, comp_pp_2016 = pp_2016_comp) %>% 
   dplyr::select(-DoR, -Ethnicity, -ED, -County, -countycode, -tract, -City, -State, 
                 -CensusTract, -RegStatus, -starts_with("pb_2"), -Zip, -CD, -SD, -HD, -DoB,
                 -black, -asian, -pacislander, -latinx, -mixed, -other,
                 -majority, -pbdistrict, -g_2012, -g_2013, -g_2014, -g_2015, -g_2016, -g_2017, 
+                -ends_with("_2000"), -ends_with("_2001"), -ends_with("_2002"), -ends_with("_2003"), -ends_with("_2004"), -ends_with("_2005"), -ends_with("_2006"),  -ends_with("_2007"), 
                 -p_2012, -p_2013, -p_2014, -p_2015, -p_2016, -p_2017, -pp_2012, -pp_2016, -cem_group, -agegroup,
                 -race) %>% 
   dplyr::select(-VANID, -NYCCD) %>% 
   mutate(Sex = as.factor(Sex),
          Race = as.factor(Race)) 
 gc()
-test <- test[c(sample(which(test$pb != 1 | test$insample != 1), 100000), which(test$pb == 1 | test$insample == 1)), ] %>% na.omit()
+# test <- test[c(sample(which(test$pb != 1 | test$insample != 1), 100000), which(test$pb == 1 | test$insample == 1)), ] %>% na.omit()
 
 unout <- test %>% 
               select(-pb, -insample, -p_2011) %>% 
@@ -132,7 +137,9 @@ unout <- test %>%
 # bal.plot(test, "medhhinc", treat = "pb", data = test, mirror = T,weights = "insample", method = "matching", which= "both")
 # bal.plot(test, "latinx", treat = "pb", data = test, mirror = T,weights = "insample", method = "matching", which= "both")
   
-love.plot(unout, threshold = .1, abs = FALSE, var.names = vnames, title = "", line = T) +theme(legend.position = "bottom")
+love.plot(unout, threshold = .1, abs = FALSE, var.names = vnames, title = "", line = T, sample.names = c("Before Matching", "After Matching")) +
+  theme(legend.position = "bottom") +
+  labs(x = "Mean differences PB-nonPB", color = "", shape = "")
 ggsave("Paper_text/Figs/match_balance.pdf", width = 6, height = 7.5, units = "in")     
 
 ## competitiveness balance

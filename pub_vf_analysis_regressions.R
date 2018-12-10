@@ -16,16 +16,15 @@ library(stringr)
 library(lme4)
 library(margins)
 
-source("create_pb_long.R")
-
 ### Creating/loading matched datasets
-source("pub_vf_matching.R")
-# load("vf_analysis.RData")
+# source("pub_vf_matching.R")
+load("vf_analysis.RData")
 
 ####  replicating transformation and first regressions with the matched data -------------------------------------------------------------------------------------
 
 ## process analysis df to pb_long df for analysis (creating wide pb table along the way)
-# source("addNYCCD.R")
+source("create_pb_long.R")
+
 pb_long <- create_pb_long(vf_analysis)
 
 #### Set reference levels for factor variables 

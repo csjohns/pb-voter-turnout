@@ -126,7 +126,7 @@ preds %>%
   ggplot(aes(y = pe, ymin = lower, ymax = upper, x = year)) + 
   # geom_segment(aes(xend = Race, y = 0, yend = preds, color = as.factor(after_pb)))+
   geom_pointrange(aes(color = as.factor(after_pb))) +
-  scale_y_continuous(labels = percent) +
+  # scale_y_continuous(labels = percent) +
   labs(#title = "Probability of voting in a general election", 
        #subtitle = "Predictions for non-PB voters, showing effect of hypothetical participation in PB vote", 
        x = "", y = "Predicted probability of voting", color = "") +
@@ -1026,7 +1026,8 @@ ggplot(preds_fd_comb, aes(x = group, y = pe, ymin = lower, ymax =upper, color = 
   ylim(-.08,.3) +
   coord_flip() +
   theme_minimal() +
-  theme(legend.position = "top")
+  theme(legend.position = "bottom",
+        axis.title=element_text(size=10))
 ggsave("Paper_text/Figs/group_fds_bothyears.pdf", width = 6.75, height = 6.5)
 
 
@@ -1037,6 +1038,7 @@ modelist <- list(lme_base_simcf, lme_race_simcf, lme_majmatch_simcf, lme_gender_
 # stargazer(lme_base_simcf, lme_race_simcf, lme_gender_simcf, lme_educ_simcf, lme_income_simcf, lme_youth_simcf)
 stargazer(modelist, 
           out = "Paper_text/Tables/subgroups_SG.tex", label = "coefficients",
+          title = "Individual voter turnout difference in difference regression results: including sub-group interactions for `triple-difference' results",
           column.labels = c("Base", "*Race", " *Maj. Match", " *Gender", "*Education", "*Income", "*Youth"),
           model.numbers = TRUE,
           order = c("^pb$", "^after\\_pb$", "^election\\_p$", "^election\\_pp$",

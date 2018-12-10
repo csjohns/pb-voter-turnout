@@ -317,7 +317,7 @@ c.refined <- c.match
 
 df_cutpoints <- list(
   white = quantile(matching_df$white, c(0,.2,.4,.6,.8,1)),
-  college = quantile(matching_df$college, c(0,.5,1)),
+  college = quantile(matching_df$college, c(0,.2,.4,.6,.8,1)),
   medhhinc = quantile(matching_df$medhhinc, c(0,.2,.4,.6,.8,1))
   , comp_g_2014 = unique(quantile(matching_df$comp_g_2014, c(0, .05, seq(.1,.9, .1), .95, 1))),
   comp_g_2016 = unique(quantile(matching_df$comp_g_2016, c(0, .05, seq(.1,.9, .1), .95, 1))),
@@ -334,8 +334,8 @@ c.out <- matching_df %>% select(-VANID) %>%
          Sex = as.factor(Sex)) %>% 
   cem(treatment = "pb", data = .,  
       grouping = list(
-        g_early = list("0",c("1,2"), c("3", "4", "5"), c("6", "7", "8")), 
-        p_early = list("0",c("1,2"),  c("3", "4","5"), c("6", "7", "8"))
+        g_early = list("0",c("1,2"), c("3", "4"), c("5", "6"), c("7", "8")), 
+        p_early = list("0",c("1,2"),  c("3", "4"), c("5", "6"), c("7", "8"))
       ), 
       cutpoints = df_cutpoints,
       verbose = 1) ### DON'T USE K2K - TOO MUCH MEMORY DEMAND. RANDOMLY DRAW FROM STRATA AFTER THE FACT
@@ -409,84 +409,101 @@ vf_analysis_granular <- c.granular %>% dplyr::select(-n_treat, -n_control) %>%
   left_join(voterfile) %>% 
   rename(comp_g_2016 = g_2016_comp, comp_g_2014 = g_2014_comp, comp_p_2014 = p_2014_comp, comp_pp_2016 = pp_2016_comp) 
 
+vf_analysis_ref <- c.refined_comp %>% dplyr::select(-n_treat, -n_control) %>% 
+  left_join(voterfile) %>% 
+  rename(comp_g_2016 = g_2016_comp, comp_g_2014 = g_2014_comp, comp_p_2014 = p_2014_comp, comp_pp_2016 = pp_2016_comp) 
+
 rm(voterfile)
 
 pb_long_base <- create_pb_long(vf_analysis_base)
 pb_long_college <- create_pb_long(vf_analysis_college)
 pb_long_granular <- create_pb_long(vf_analysis_granular)
+pb_long_ref <- create_pb_long(vf_analysis_ref)
 
 model_form <- turned_out ~ pb + after_pb + Race + Sex + as.factor(year) + election_type + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + white + college_pct + majmatch + (1 | VANID) + (1|NYCCD)
 base <- fit_lme(model_form, pb_long_base, "base")
-college <- fit_lme(model_form, pb_long_college, "college")
-granular <- fit_lme(model_form, pb_long_granular, "granular")
+college <- fit_lme(model_form, pb_long_college, "Selected match")
+granular <- fit_lme(model_form, pb_long_granular, "More granular")
+refined <- fit_lme(model_form, pb_long_ref, "Most granular")
 
-all <- bind_rows(base, college, granular)
+all <- bind_rows(base, college, granular, refined) %>% 
+  mutate(source = factor(source, levels = c("base", "Selected match", "More granular", "Most granular")))
 all %>% group_by(source) %>% summarize(pcp = mean(pcp))
 
-ggplot(all) + 
+all %>% 
+  mutate(term = str_replace(term, "white", "white_pct")) %>% 
+  filter(!str_detect(term, '\\d\\d\\d\\d$|\\(Intercept\\)|age\\_at\\_vote')) %>% 
+  filter(source != "base") %>% 
+ggplot() + 
+  geom_hline(aes(yintercept = 0), alpha = .7) +
   geom_pointrange(aes(x = term, 
                       y = estimate, 
                       ymin = estimate - 1.96*std.error, 
                       ymax = estimate + 1.96*std.error, 
                       color = source),
                   position = position_dodge(width = 1)) +
-  ylim(-2.75,2.75) +
+  # ylim(-2.75,3) +
+  labs(x = "", y = "Coefficient estimate", color = "") +
   coord_flip()+
   theme_minimal()
+ggsave(file = "Paper_text/Figs/match_spec_all.pdf", width = 6, height = 7)
 
 ## The result of these investigations is a pretty resounding statement that the granularity of the match is not significant
 ## - estimates are pretty robustly consistent across the specifications of the match.
 
 race_form <- turned_out ~ pb + after_pb + Race*after_pb + Sex + as.factor(year)*Race + election_type + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + white + college_pct + majmatch + (1 | VANID) + (1|NYCCD)
 base_race <- fit_lme(race_form, pb_long_base, "base")
-college_race <- fit_lme(race_form, pb_long_college, "college")
-granular_race <- fit_lme(race_form, pb_long_granular, "granular")
+college_race <- fit_lme(race_form, pb_long_college, "Selected match")
+granular_race <- fit_lme(race_form, pb_long_granular, "More granular")
+refined_race <- fit_lme(race_form, pb_long_ref, "Most granular")
 
-all_race <- bind_rows(base_race, college_race, granular_race)
+
+all_race <- bind_rows(base_race, college_race, granular_race, refined_race) %>% 
+  mutate(source = factor(source, levels = c("base", "Selected match", "More granular", "Most granular")))
 all_race %>% group_by(source) %>% summarize(pcp = mean(pcp))
 
-ggplot(all_race) + 
+
+all_race %>% filter(!str_detect(term, '\\d\\d\\d\\d$|\\(Intercept\\)|age\\_at\\_vote')) %>% 
+  filter(source != "base") %>% 
+ggplot() + 
   geom_pointrange(aes(x = term, 
                       y = estimate, 
                       ymin = estimate - 1.96*std.error, 
                       ymax = estimate + 1.96*std.error, 
                       color = source),
                   position = position_dodge(width = 1)) +
-  ylim(-3,3) +
+  # ylim(-3,4) +
+  labs(x = "", y = "Est. coefficient", color = "") +
   coord_flip()+
   theme_minimal()
+ggsave("Paper_text/Figs/match_spec_race.pdf", width = 5, height = 8)
 
-
-ggplot(all_race) + 
-  geom_pointrange(aes(x = term, 
-                      y = estimate, 
-                      ymin = estimate - 1.96*std.error, 
-                      ymax = estimate + 1.96*std.error, 
-                      color = source),
-                  position = position_dodge(width = 1)) +
-  ylim(-3,3) +
-  coord_flip()+
-  theme_minimal()
 
 #####
 educ_form <- turned_out ~ pb + after_pb + college_pct*after_pb + Race + Sex + as.factor(year)*college_pct + election_type + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + white + college_pct + majmatch + (1 | VANID) + (1|NYCCD)
 base_educ <- fit_lme(educ_form, pb_long_base, "base")
-college_educ <- fit_lme(educ_form, pb_long_college, "college")
-granular_educ <- fit_lme(educ_form, pb_long_granular, "granular")
+college_educ <- fit_lme(educ_form, pb_long_college, "Selected match")
+granular_educ <- fit_lme(educ_form, pb_long_granular, "More granular")
+refined_educ <- fit_lme(educ_form, pb_long_ref, "Most granular")
 
-all_educ <- bind_rows(base_educ, college_educ, granular_educ)
+all_educ <- bind_rows(base_educ, college_educ, granular_educ, refined_educ) %>% 
+  mutate(source = factor(source, levels = c("base", "Selected match", "More granular", "Most granular")))
 all_educ %>% group_by(source) %>% summarize(pcp = mean(pcp))
 
-ggplot(all_educ) + 
+all_educ %>% filter(!str_detect(term, '\\d\\d\\d\\d$|\\(Intercept\\)|age\\_at\\_vote')) %>% 
+  filter(source != "base") %>% 
+ggplot() + 
   geom_pointrange(aes(x = term, 
                       y = estimate, 
                       ymin = estimate - 1.96*std.error, 
                       ymax = estimate + 1.96*std.error, 
                       color = source),
                   position = position_dodge(width = 1)) +
-  ylim(-3,3) +
+  labs(x = "", y = "Est. coefficient", color = "") +
+  # ylim(-3, 5) +
   coord_flip()+
   theme_minimal()
+ggsave("Paper_text/Figs/match_spec_educ.pdf", width = 6, height = 8)
 
 
 ggplot(all_race) + 
