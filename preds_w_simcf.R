@@ -1,5 +1,11 @@
 library(simcf)
 library(MASS)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(stringr)
+library(lme4)
 
 rm(lme_age2, lme_elig, lme_full, lme_full_ncollege, lme_lmed, lme_logit, lme_med2, lme_nosex, lme_nowhite, covar_lm, covar_logit)
 
@@ -122,18 +128,18 @@ preds <- cbind(xhyp_pre$x, as.data.frame(yhyp_pre)) %>%
 library(scales)
 preds %>%
   dplyr::select(after_pb, year, pe, lower, upper) %>% 
-  mutate(after_pb = factor(after_pb, levels = c(0,1), labels = c("No PB", "After PB"))) %>% 
+  mutate(after_pb = factor(after_pb, levels = c(1,0), labels = c("After PB", "No PB"))) %>% 
   ggplot(aes(y = pe, ymin = lower, ymax = upper, x = year)) + 
   # geom_segment(aes(xend = Race, y = 0, yend = preds, color = as.factor(after_pb)))+
-  geom_pointrange(aes(color = as.factor(after_pb))) +
+  geom_pointrange(aes(color = after_pb, linetype = after_pb, shape = after_pb)) +
   # scale_y_continuous(labels = percent) +
   labs(#title = "Probability of voting in a general election", 
        #subtitle = "Predictions for non-PB voters, showing effect of hypothetical participation in PB vote", 
-       x = "", y = "Predicted probability of voting", color = "") +
+       x = "", y = "Predicted probability of voting", color = "", linetype = "", shape = "") +
   # coord_flip() +
   theme_minimal() +
   theme(axis.title=element_text(size=11))
-ggsave("Paper/Figs/base_by_year.pdf", width = 6, height = 4)
+ggsave("Paper_text/Figs/base_by_year.pdf", width = 6, height = 4)
 #ggsave("Paper/Figs/base_by_year.png", width = 6, height = 5)
 
 

@@ -1,4 +1,9 @@
 library(cem)
+
+ load("vf_dataformatching.RData")
+ load("compet.Rdata")  
+ 
+
 ## Repeating CEM with different specifications
 
 ## The one I used last - as was + majmatch
@@ -85,6 +90,8 @@ c.base_majmatch <- c.match
 
 ####  Base with college added back in ------------------------------------------------------------------
 rm(c.match, c.out)
+
+set.seed(12018)
 
 df_cutpoints <- list(
   white = quantile(matching_df$white, c(0,.2,.4,.6,.8,1)),
@@ -440,10 +447,10 @@ ggplot() +
                       y = estimate, 
                       ymin = estimate - 1.96*std.error, 
                       ymax = estimate + 1.96*std.error, 
-                      color = source),
+                      color = source, linetype = source, shape = source),
                   position = position_dodge(width = 1)) +
   # ylim(-2.75,3) +
-  labs(x = "", y = "Coefficient estimate", color = "") +
+  labs(x = "", y = "Coefficient estimate", color = "", linetype = "", shape = "") +
   coord_flip()+
   theme_minimal()
 ggsave(file = "Paper_text/Figs/match_spec_all.pdf", width = 6, height = 7)
