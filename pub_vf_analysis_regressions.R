@@ -192,7 +192,7 @@ stargazer((list(lme_minimal, lme_demog, lme_tract, lme_final)),
           keep.stat = c("n", "aic", "bic", "n"),
           star.char = "*", star.cutoffs = 0.05,
           align = TRUE,
-          notes = "\\parbox[t]{.85\\textwidth}{\\footnotesize \\textit{Note:} Difference in difference regression results from multilevel mixed effect logistic models of individual turnout in a given election, including random effects for individual and council districts.  Standard errors reported in parentheses and statistical significance at $p<0.05$ indicated by $^{*}$.}",
+          notes = "\\parbox[t]{.85\\textwidth}{\\footnotesize \\textit{Note:} Difference-in-difference regression results from multilevel mixed effect logistic models of individual turnout in a given election, including random effects for individual and council districts.  Standard errors reported in parentheses and statistical significance at $p<0.05$ indicated by $^{*}$.}",
           notes.label = "",
           notes.align = "l",
           notes.append = FALSE)
