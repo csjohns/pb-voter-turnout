@@ -1,4 +1,12 @@
+library(dplyr)
+library(tidyr)
+library(glue)
+library(lubridate)
+library(stringr)
+library(data.table)
+library(MatchIt)
 library(cem)
+
 
  load("vf_dataformatching.RData")
  load("compet.Rdata")  
@@ -385,7 +393,7 @@ c.refined_comp <- c.match
 # Matched     96877 3079
 # Unmatched  938786 3072
 # 50% matchee
-save(voterfile, c.granular, c.college, c.base_majmatch, c.refined, c.refined_comp, file = "matchcompare_gis.RData")
+# save(voterfile, c.granular, c.college, c.base_majmatch, c.refined, c.refined_comp, file = "matchcompare_gis.RData")
 
 #### Comparing estimates from the differently specified matches ------------------------------------------------------------------
 library(lme4)
@@ -402,7 +410,7 @@ fit_lme <- function(formula, df, name) {
   out
 }
 
-load("matchcompare_gis.RData")
+# load("matchcompare_gis.RData")
 
 vf_analysis_base <- c.base_majmatch %>% dplyr::select(-n_treat, -n_control) %>% 
   left_join(voterfile) %>% 
@@ -437,9 +445,50 @@ all <- bind_rows(base, college, granular, refined) %>%
   mutate(source = factor(source, levels = c("base", "Selected match", "More granular", "Most granular")))
 all %>% group_by(source) %>% summarize(pcp = mean(pcp))
 
+
+vnames <- data.frame(old = unique(all$term), new = unique(all$term), stringsAsFactors = FALSE) %>% 
+  mutate(new = str_replace_all(new, pattern = "after_pb", replacement = "After PB"),
+         new = str_replace_all(new, pattern = "pb", replacement = "PB district"),
+         new = str_replace_all(new, pattern = "RaceB", replacement = "Black"),
+         new = str_replace_all(new, pattern = "RaceA", replacement = "Asian"),
+         new = str_replace_all(new, pattern = "RaceH", replacement = "Hispanic"),
+         new = str_replace_all(new, pattern = "RaceW", replacement = "White"),
+         new = str_replace_all(new, pattern = "RaceU", replacement = "Unknown"),
+         new = str_replace_all(new, pattern = "SexM", replacement = "Male"),
+         new = str_replace_all(new, pattern = "election_typepp", replacement = "Presidential primary"),
+         new = str_replace_all(new, pattern = "election_typep", replacement = "Primary election"),
+         
+         new = str_replace_all(new, pattern = "I\\(age\\^2\\)", replacement = "Age^2"),
+         new = str_replace_all(new, pattern = "medhhinc_10k", replacement = "Median household income"),
+         new = str_replace_all(new, pattern = "majmatchTRUE", replacement = "Majority race alignment"),
+         new = ifelse(new == "high_school", "% High school diploma", new),
+         new = ifelse(new == "college_pct", "% College degree", new),
+         new = ifelse(new == "medhhinc", "Median household income", new),
+         new = ifelse(new == "white", "% White", new),
+         # new = ifelse(new == "black", "% Black", new),
+         # new = ifelse(new == "asian", "% Asian", new),
+         # new = ifelse(new == "pacislander", "% Pacific Islander", new),
+         # new = ifelse(new == "latinx", "% Latinx", new),
+         # new = ifelse(new == "mixed", "% Multiple races", new),
+         # new = ifelse(new == "other", "% Other race", new),
+         new = ifelse(new == "majmatch", "Majority race alignment", new),
+         new = ifelse(new == "age", "Age", new),
+         new = ifelse(new == "comp_g_2014", "Competitiveness 2014 general", new),
+         new = ifelse(new == "comp_g_2016", "Competitiveness 2016 general", new),
+         new = ifelse(new == "comp_p_2014", "Competitiveness 2014 primary", new),
+         new = ifelse(new == "comp_pp_2016", "Competitiveness 2016 pres. primary", new)
+  ) 
+
+for (v in 1:nrow(all)) {
+  all$term[v] <- vnames$new[vnames$old == all$term[v]]
+}
+
 all %>% 
-  mutate(term = str_replace(term, "white", "white_pct")) %>% 
+    filter(!str_detect(term, '\\d\\d\\d\\d$|\\(Intercept\\)|age\\_at\\_vote')) %>% 
   filter(!str_detect(term, '\\d\\d\\d\\d$|\\(Intercept\\)|age\\_at\\_vote')) %>% 
+  mutate(term = factor(term, levels = c("PB district", "After PB", "Primary election", "Presidential primary", 
+                                        "Black", "Asian", "Hispanic", "Unknown", "White",
+                                        "Male", "Age", "Age^2", "% College degree", "Median household income", "% White", "Majority race alignment"))) %>% 
   filter(source != "base") %>% 
 ggplot() + 
   geom_hline(aes(yintercept = 0), alpha = .7) +
@@ -472,7 +521,7 @@ all_race %>% group_by(source) %>% summarize(pcp = mean(pcp))
 
 all_race %>% filter(!str_detect(term, '\\d\\d\\d\\d$|\\(Intercept\\)|age\\_at\\_vote')) %>% 
   filter(source != "base") %>% 
-ggplot() + 
+  ggplot() + 
   geom_pointrange(aes(x = term, 
                       y = estimate, 
                       ymin = estimate - 1.96*std.error, 
