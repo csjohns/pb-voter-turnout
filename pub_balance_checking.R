@@ -36,7 +36,7 @@ vnames <- data.frame(old = names(all_pb), new = names(all_pb)) %>%
          new = ifelse(new == "p_early", "Primary elections 2000-2007", new),
          new = ifelse(new == "high_school", "% High school diploma", new),
          new = ifelse(new == "college", "% College degree", new),
-         new = ifelse(new == "medhhinc", "% Median household income", new),
+         new = ifelse(new == "medhhinc", "Median household income", new),
          new = ifelse(new == "white", "% White", new),
          # new = ifelse(new == "black", "% Black", new),
          # new = ifelse(new == "asian", "% Asian", new),
