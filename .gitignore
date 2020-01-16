@@ -2,6 +2,7 @@
 .Rhistory
 .RData
 *.RData
+*.rds
 .Ruserdata
 *.Rproj
 credentials*.R

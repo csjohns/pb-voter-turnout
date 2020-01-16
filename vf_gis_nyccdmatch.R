@@ -19,7 +19,7 @@ nyccdassign <- st_join(nocds, cdsf, join = st_intersects)
 
 nyccdassign[, c("Shape_Leng", "Shape_Area", "geometry")] <- NULL
 nyccdassign <- as.data.frame(nyccdassign) %>% 
-  mutate(CounDist = as.numeric(CounDist))
+  mutate(CounDist = as.integer(CounDist))
 voterfile <- voterfile %>% left_join(nyccdassign)
 voterfile <- voterfile %>% 
   mutate(CityCouncilName = coalesce(CityCouncilName, CounDist))
