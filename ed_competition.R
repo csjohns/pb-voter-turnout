@@ -7,7 +7,8 @@
 ########################################################################################################################
 ### Prelims ###
 
-require(RMySQL)
+library(DBI)
+library(RPostgres)
 library(stringr)
 library(dplyr)
 library(tidyr)
@@ -18,7 +19,7 @@ source("credentials_comp.R") # loads the access credentials
 
 ########################################################################################################################
 ### Loading and checking the data ### Loading from the nyc competitiveness app at the moment
-con <- dbConnect(dbDriver("PostgreSQL"), user = username, password = password, dbname = db.name, host = hostname, port = port) #establish connection to DB
+con <- dbConnect(RPostgres::Postgres(), user = username, password = password, dbname = db.name, host = hostname, port = port) #establish connection to DB
 results_orig <- dbGetQuery(con, "
 select * from scraped_BOE 
 where electionmonth IN (4,9,11)
