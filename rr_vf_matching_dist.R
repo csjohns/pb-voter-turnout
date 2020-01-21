@@ -1,28 +1,28 @@
 ##### 
 ### Matching PB to non-PB voters
-
-library(dplyr)
-library(tidyr)
-library(glue)
-library(lubridate)
-library(stringr)
-library(data.table)
-library(MatchIt)
-library(cem)
-
-source("credentials.R") # loads the access credentials
-source("dbDownload.R")
-
-stringNAs <- function(x){
-  ifelse(x, "", NA)
-}
-# 
-# conv19c <- function(s, ft = "%m/%d/%y"){
-#   as.Date(format(as.Date(s,format=ft), "19%y%m%d"), "%Y%m%d")
-# }
-### Load PB data ### -------------------------------------------------------------------------------------
-
-pb <- dbDownload(table = "pb", username = username, password = password, dbname = db.name, host = hostname, port = port)
+  
+  library(dplyr)
+  library(tidyr)
+  library(glue)
+  library(lubridate)
+  library(stringr)
+  library(data.table)
+  library(MatchIt)
+  library(cem)
+  
+  source("credentials.R") # loads the access credentials
+  source("dbDownload.R")
+  
+  stringNAs <- function(x){
+    ifelse(x, "", NA)
+  }
+  # 
+  # conv19c <- function(s, ft = "%m/%d/%y"){
+  #   as.Date(format(as.Date(s,format=ft), "19%y%m%d"), "%Y%m%d")
+  # }
+  ### Load PB data ### -------------------------------------------------------------------------------------
+  
+  pb <- dbDownload(table = "pb", username = username, password = password, dbname = db.name, host = hostname, port = port)
 
 # load("pb_orig.Rdata")
 #pb <- pb_orig 
@@ -138,8 +138,8 @@ voterfile <- voterfile  %>%
   gc()
   
 ### Including census data ### ----------------------------------------------------------------------------------------------------------------------------
-  source("censustables.R")
-  # load("census.Rdata")
+  # source("censustables.R")
+  load("census.Rdata")
   voterfile <- voterfile %>% filter(County %in% c("BRONX", "KINGS", "NEW YORK", "QUEENS", "RICHMOND")) %>% 
     mutate(countycode = recode(County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085"),
            tract = paste0(countycode, str_pad(CensusTract, 6, "left", "0")))
