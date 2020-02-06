@@ -102,6 +102,7 @@ calc_compet <- function(results) {
 }
 
 
+
 ## download BO results pages for each election of interest: ----
 urls <- c(r2008 = "http://www.vote.nyc.ny.us/html/results/2008.shtml", 
           r2009 = "http://www.vote.nyc.ny.us/html/results/2009.shtml",
@@ -179,17 +180,35 @@ for (u in urls) {
 }
 
 ### Cleaning and normalizing formats -----------------------------------------------------------------------------------------------
-# saving backup of downloaded raw results
 res_all_backup <- res_all
+
+# saving backup of downloaded raw results
+# res_all_backup <- readRDS("boe_dist_pdf_all.Rds")
+# saveRDS(res_all_backup, "boe_dist_pdf_all.Rds")
 
 # loading backup
 res_all <- res_all_backup
-# saveRDS(res_all_backup, "boe_dist_pdf_all.Rds")
-# res_all <- readRDS("boe_dist_pdf_all.Rds")
+# read in manual data
+res_manual <- readRDS("BOE_manual.rds")
+for (i in seq_along(res_manual)) {
+  res_manual[[i]]$year <- names(res_manual)[i]
+}
+
+## bind manual results to the respective years dataframes
+res_all[["http://www.vote.nyc.ny.us/html/results/2010.shtml"]] <- 
+  res_all[["http://www.vote.nyc.ny.us/html/results/2010.shtml"]] %>% 
+  bind_rows(res_manual[["2010"]] )
+
+res_all[["http://www.vote.nyc.ny.us/html/results/2013.shtml"]] <- 
+  res_all[["http://www.vote.nyc.ny.us/html/results/2013.shtml"]] %>% 
+  bind_rows(res_manual[["2013"]] )
+
+
+
 ### cleaning up
 for (d in seq_along(res_all)) {
   res_all[[d]] <- res_all[[d]] %>% 
-    filter(!str_detect(toupper(group), "WRITE-IN|EMERGENCY|AFFIDAVIT|ABSENTEE|PUBLIC COUNTER|UNRECORDED|TOTAL BALLOTS|FEDERAL|SPECIAL PRESIDENTIAL|APPLICABLE BALLOTS"))
+    filter(!str_detect(toupper(group), "WRITE-IN|EMERGENCY|AFFIDAVIT|ABSENTEE|PUBLIC COUNTER|UNRECORDED|TOTAL BALLOTS|FEDERAL|SPECIAL PRESIDENTIAL|APPLICABLE BALLOTS|BLANK|INVALID"))
   
   res_all[[d]] <- res_all[[d]] %>% 
     group_by(election,date,scope,office,district,year) %>% 
