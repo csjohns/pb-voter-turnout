@@ -1,9 +1,33 @@
+##############################################################################################################################
+###
+### NYC PB Voters Project 
+### Scraping all sub-city district level election results from BOE PDFS - (2008-2013)
+### Carolina Johnson
+### 01/20/2020
+###
+### Iteratively download and extract info from all relevant BOE pdf links separately (in list) for years 2008-2013
+### 1) Extract data from PDF link
+### 2) Extract metadata
+### 3) Limit to pages after total header
+### 4) Clean and combine all separate race results to on dataframe per year
+### 5) Inspect, manually intervene in DQ issues
+### 6) Filter to only crossover in cases of multiple crossover sub-result pages
+### 7) Iteratively filter to only relevant records, clean election/district names
+### 
+###
+##############################################################################################################################
+
+
 library(tabulizer)
 library(rvest)
 library(dplyr)
 library(tidyr)
 library(stringr)
 
+# load custom helper functions
+source("BOE_scraper_funs.R")
+
+# demo/area extraction code
 # tab <- extract_tables('https://www.vote.nyc.ny.us/downloads/pdf/results/2010/General/20.7NewYork64AssemblyRecap.pdf', pages = 2, columns = 2 )
 # head(tab)
 # 
@@ -19,89 +43,6 @@ library(stringr)
 #                       c(81.28122, 47.61128,732.38654,492.51901 ),
 #                       c( 80.42562,45.90009,357.63735,483.96309 )))
 
-### Functions -----
-
-
-split_vote_cols <- function(df){
-  splitpat <- "(.* )([^\\s]*$)"
-  if (ncol(df) == 1) {
-    splits <- str_match(df, splitpat)[,2:3]
-    df <- splits
-  } else if (!any(df[2:5, 2]!="")){
-    df <- df[,1] 
-    splits <- str_match(df, splitpat)[,2:3]
-    df <- splits
-  }
-  df
-}
-
-drop_partial <- function(x){
-  if (!is.data.frame(x) && x == "partial") {
-    x <- NULL 
-  }
-  x
-}
-
-collapse_clean_tabs <- function(reslist) {
-  out <- bind_rows(reslist)
-  out <- out %>% 
-    mutate(votes = as.numeric(str_remove_all(votes, ","))) %>% 
-    filter(!is.na(votes))
-  out
-}
-
-clean_candidates <- function(df) {
-  df %>% separate(group, c("candidate", "party"), sep = " \\(") %>%
-    mutate(party = str_replace(party, "\\)", "")) %>%
-    mutate_at(vars(candidate, party), str_trim) 
-}
-
-check_xover <- function(x) {
-  any(str_detect(tolower(x), "crossover"))
-}
-
-test_single_tot <- function(x) {
-  n_distinct(x) == 1
-}
-
-test_crossover_inclusive <- function(results) {
-  xovertest <- results %>% 
-    group_by(election, date, office, district, year) %>% 
-    mutate(crossover = check_xover(scope)) %>% #View()
-    mutate(isxover = str_detect(tolower(scope), "crossover")) %>% 
-    group_by(election, date, office, district, year, candidate, party, isxover) %>% #grouping by all but scope in order to only sum across non-xover scopes
-    mutate(totalvotes_xoversplit = sum(totalvotes)) #%>% View()
-  xoversum <- xovertest %>% 
-    group_by(election, date, office, district, year) %>% 
-    summarize(allequal = test_single_tot(totalvotes_xoversplit)) 
-  if (any(!xoversum$allequal)) {
-    res <- xoversum %>% filter(!allequal)
-  } else if (!any(!xoversum$allequal)) {
-    res <- TRUE
-  }
-  res
-}
-
-
-calc_compet <- function(results) {
-  results %>% 
-    group_by(election, date, office, district, year) %>% 
-    mutate(totalvotes_allscope = sum(totalvotes)) %>% 
-    summarize(dist_cand_votes = sum(votes, na.rm = TRUE),
-              dist_totvotes = unique(totalvotes),
-              n_ballot_lines = n()) %>% 
-    mutate(vote_pct = dist_cand_votes/dist_totvotes) %>% 
-    ungroup() %>% 
-    arrange(desc(vote_pct)) %>% 
-    mutate(vote_margin_all = dist_cand_votes - (dist_totvotes - dist_cand_votes),
-           vote_margin_pct_all = vote_margin_all/dist_totvotes,
-           next_up = lead(dist_cand_votes, 1),
-           vote_margin_next = dist_cand_votes - next_up,
-           vote_margin_pct_next = vote_margin_next/dist_totvotes) %>% 
-    slice(1)
-}
-
-
 
 ## download BO results pages for each election of interest: ----
 urls <- c(r2008 = "http://www.vote.nyc.ny.us/html/results/2008.shtml", 
@@ -113,6 +54,8 @@ urls <- c(r2008 = "http://www.vote.nyc.ny.us/html/results/2008.shtml",
 res_all <- vector("list", length = length(urls))
 names(res_all) <- urls
 
+alllinks <- vector("list", 5)
+names(alllinks) <- urls
 errors <- vector("character")
 
 for (u in urls) {
@@ -126,9 +69,10 @@ for (u in urls) {
   
   # filter to relevant links and cleanup
   # links_ed <- links[str_detect(links, "EDLevel\\.csv$")] 
-  links_rel <- links[str_detect(links, "Council|Congress|State Senat|Assembly")]
+  links_rel <- links[str_detect(links, "Council|Congress|Cong\\d|State\\s?Senat|Senate\\d|Assembly")]
   links_rel <- str_replace(links_rel, "^../..", "https://vote.nyc.ny.us")
   links_rel[!str_detect(links_rel, "^https://vote.nyc.ny.us")] <- paste0("https://vote.nyc.ny.us", links_rel[!str_detect(links_rel, "^https://vote.nyc.ny.us")])
+  alllinks[[u]] <- links_rel
   
   res_year <- vector("list", length = length(links_rel))
   names(res_year) <- str_split(links_rel,  "20\\d\\d/", simplify = T)[,2]
@@ -141,7 +85,7 @@ for (u in urls) {
                                     area = list(c(70, 40, 747, 493)))
     if (any(sapply(res_year[[p]], function(x){nrow(x) > 1}))){
       #extract metadata
-      res_year[[p]][[1]] <- as.matrix(res_year[[p]][[1]][res_year[[p]][[1]][1] != "", 1])
+      res_year[[p]][[1]] <- as.matrix(res_year[[p]][[1]][res_year[[p]][[1]][,1] != "", 1])
       election <- str_split(res_year[[p]][[1]][3,1], " - ", simplify = TRUE)[[1,1]]
       date <- str_split(res_year[[p]][[1]][3,1], " - ", simplify = TRUE)[[1,2]]
       scope <- res_year[[p]][[1]][4,1]
@@ -169,6 +113,7 @@ for (u in urls) {
       res_year[[p]]$scope <- scope
       res_year[[p]]$office <- office
       res_year[[p]]$district <- district
+      res_year[[p]]$url <- links_rel[p]
     } else {
       errors <- c(errors, links_rel[p])
       res_year[[p]] <- NULL
@@ -179,7 +124,19 @@ for (u in urls) {
     mutate(year = str_remove(year, "r")) 
 }
 
-### Cleaning and normalizing formats -----------------------------------------------------------------------------------------------
+
+## checking all results included/errored
+allinks <- unlist(alllinks)
+reslinks <- lapply(res_all, function(x){x$url}) %>% unlist()
+setdiff(allinks, reslinks) == errors
+
+sapply(alllinks, n_distinct)
+sapply(res_all, function(x){n_distinct(x$url)})
+# the missing records match the errors: Good
+errors
+# errors[3,5:7] are irrelevant and not worth scraping.
+
+### Data archive/load/backup -----------------------------------------------------------------------------------------------
 res_all_backup <- res_all
 
 # saving backup of downloaded raw results
@@ -188,24 +145,27 @@ res_all_backup <- res_all
 
 # loading backup
 res_all <- res_all_backup
-# read in manual data
+
+
+### Attaching manual data -------------------------------------------------------------
 res_manual <- readRDS("BOE_manual.rds")
 for (i in seq_along(res_manual)) {
   res_manual[[i]]$year <- names(res_manual)[i]
 }
 
 ## bind manual results to the respective years dataframes
-res_all[["http://www.vote.nyc.ny.us/html/results/2010.shtml"]] <- 
-  res_all[["http://www.vote.nyc.ny.us/html/results/2010.shtml"]] %>% 
-  bind_rows(res_manual[["2010"]] )
+# res_all[["http://www.vote.nyc.ny.us/html/results/2010.shtml"]] <- 
+#   res_all[["http://www.vote.nyc.ny.us/html/results/2010.shtml"]] %>% 
+#   bind_rows(res_manual[["2010"]] )
+# excluding 2010 results 
 
 res_all[["http://www.vote.nyc.ny.us/html/results/2013.shtml"]] <- 
   res_all[["http://www.vote.nyc.ny.us/html/results/2013.shtml"]] %>% 
   bind_rows(res_manual[["2013"]] )
 
 
+### Cleaning and normalizing formats -----------------------------------------------------------------------------------------------
 
-### cleaning up
 for (d in seq_along(res_all)) {
   res_all[[d]] <- res_all[[d]] %>% 
     filter(!str_detect(toupper(group), "WRITE-IN|EMERGENCY|AFFIDAVIT|ABSENTEE|PUBLIC COUNTER|UNRECORDED|TOTAL BALLOTS|FEDERAL|SPECIAL PRESIDENTIAL|APPLICABLE BALLOTS|BLANK|INVALID"))
@@ -221,20 +181,85 @@ for (d in seq_along(res_all)) {
 
 ## cleaning up candidate/party info
 res_all <- lapply(res_all, clean_candidates)
+res_all <- lapply(res_all, split_scope)
 
 ## confirming crossovers are accurate sums of separate borough results
 lapply(res_all, test_crossover_inclusive)
 
-# manual investigation
-# res_all[[3]] %>% filter(election == "Primary Election 2010" & str_detect(office, "Representative in Congress")& district == "14th Congressional District") %>% View()
+# manual investigation ---------------
+res_all[[3]] %>% 
+  filter(election == "Primary Election 2010" & 
+           str_detect(office, "Democratic State Senator") & 
+           district == "31st Senatorial District") %>%
+  View()
+# manually confirmed against BOE - crossover is good
+# res_all[[3]] %>% 
+res_all[[3]] %>% 
+  filter(election == "Primary Election 2010" & 
+         str_detect(office, "Republican State Senator") & 
+         district == "28th Senatorial District") %>%
+  View()
 
-### NEXT UP: FILTER TO ONLY NON-XOVER DISTRICTS OR XOVER RES
-## foundation for function definition:
-results %>%
-  group_by(election, date, office, district, year) %>%
-  mutate(crossover = check_xover(scope)) %>% #View()
-  mutate(crossover_drop = crossover & !str_detect(tolower(scope), "crossover")) %>%
-  filter(!crossover_drop) %>% View()
+## ignore the weird 2012 7th congr results - they are contractory on BOE site, keep crossover only
+## something weird going on - general 13th crossover in twice??  richmond and xover had adjusted results (2 additional votes)
+##   It's too small to change the final percents (less than 0.01% change), so removing manual entries to save reformatting trouble
 
-### Calculate competitiveness! --------------------------------------------------------------------------------------------
-# should be able to use the calc_compet function defined above from teh city-wide BOE scraper
+# (all senate district mismatches are due to rel link filter - fixed for next rerun (exluded Senate28 etc formats, w/o "state")
+
+### Filter out crossover redundancies ------------------------------------------------------
+filter_xover <- function(results) {
+  xovertest <- results %>% 
+    group_by(election, party, date, office, district, year) %>% 
+    mutate(crossover = check_xover(county)) %>% 
+    mutate(isxover = str_detect(tolower(county), "crossover")) %>% 
+    filter(!crossover | isxover) %>% 
+    select(-crossover, -isxover) %>% 
+    ungroup()
+  xovertest
+}
+
+res_filtered <- lapply(res_all, filter_xover)
+
+### Check and filter to target value set ------------------------------------------------------
+## helper functions
+
+check_vals <- function(d) {
+  d %>% select(election, date) %>% distinct()
+}
+filter_electiontype <- function(d) {
+  filter(d, str_detect(tolower(election), "general") | str_detect(tolower(election), "primary"))
+}
+
+check_dists <- function(d) {table(d$district) %>% as.matrix()}
+check_office <- function(d){table(d$office) %>% as.matrix()}
+
+filter_electiontype <- function(d) {
+  filter(d, str_detect(tolower(election), "general") | str_detect(tolower(election), "primary"))
+}
+
+filter_office <- function(d) {
+  filter(d, str_detect(tolower(office), "city council|mayor|senator|cong|member of the assembly"))
+}
+
+## Inspect election/date values
+lapply(res_filtered, check_vals)
+
+# fix the 2010 special election on primary day to collapse into primary (so not lost when filter out special)
+res_filtered[[2]] <- res_filtered[[2]] %>% 
+  mutate(election = ifelse(date == '09/15/2009' & ! stringr::str_detect(election, "Election"), "Primary Special 2009", election))
+
+# remove special elections
+res_filtered <- lapply(res_filtered, filter_electiontype)
+
+## check districts/office values
+lapply(res_filtered, check_dists)
+lapply(res_filtered, check_office)
+lapply(res_filtered, function(d){table(d$office, d$election)})
+
+# filter to only relevant offices  ****NEED TO WRITE FUNCTION STILL****
+res_filtered <- lapply(res_filtered, filter_office)
+
+### Scope, Party, Office mannagement --------------------------------------------------------------------------------------------
+res_comb <- bind_rows(res_filtered)
+
+## STILL NEED TO CLEAN/STANDARDIZE DISTRICT!!

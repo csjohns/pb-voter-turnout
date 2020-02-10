@@ -1,4 +1,8 @@
-### scrape BOE for electronic results for specified elections
+###
+### scrape BOE for electronic ED results for specified elections (currently 2017)
+###
+
+
 library(rvest)
 library(dplyr)
 library(tidyr)
@@ -16,7 +20,7 @@ links <- r2017 %>%
 
 # filter to relevant links and cleanup
 links_ed <- links[str_detect(links, "EDLevel\\.csv$")] 
-links_rel <- links_ed[str_detect(links_ed, "City Council|Mayor|Senator|Member of the Assembly") & !str_detect(links_ed, "[0-9]Citywide")]
+links_rel <- links_ed[str_detect(links_ed, "City Council|Mayor|Senator|Cong|Member of the Assembly") & !str_detect(links_ed, "[0-9]Citywide")]
 links_rel <- str_replace(links_rel, "^../..", "https://vote.nyc.ny.us")
 links_rel[!str_detect(links_rel, "^https://vote.nyc.ny.us")] <- paste0("https://vote.nyc.ny.us", links_rel[!str_detect(links_rel, "^https://vote.nyc.ny.us")])
 
@@ -81,3 +85,4 @@ saveRDS(comb, "combined2017res.Rds")
 ## filter to containing "*EDLevel.csv"
 # then loop through load & r bind each of those csv urls
 
+comb17 <- readRDS("combined2017res.Rds")
