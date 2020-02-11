@@ -29,10 +29,12 @@ library(stringr)
 calc_compet <- function(results) {
   results %>% 
     group_by(candidate, office, district, party, year, election) %>% 
+    # calculate how many votes the candidate received, the total votes cast in the race, and the number of ballot lines that candidate ran on:
     summarize(dist_cand_votes = sum(votes, na.rm = TRUE),
               dist_totvotes = unique(totalvotes),
               n_ballot_lines = n()) %>% 
-    mutate(vote_pct = dist_cand_votes/dist_totvotes) %>% 
+    # calculate candidates vote percent of all votes cast in election
+    mutate(vote_pct = dist_cand_votes/dist_totvotes) %>%  
     group_by(office, district, party, year, election) %>% 
     arrange(desc(vote_pct)) %>% 
     mutate(vote_margin_all = dist_cand_votes - (dist_totvotes - dist_cand_votes),
@@ -40,17 +42,20 @@ calc_compet <- function(results) {
            next_up = lead(dist_cand_votes, 1),
            vote_margin_next = dist_cand_votes - next_up,
            vote_margin_pct_next = vote_margin_next/dist_totvotes) %>% 
-    slice(1)
+     slice(1)
 }
 
-### NEED TO REVIEW THE LOGIC OF THIS COMPETITIVENESS FUNCTION, BUT IT CURRENTLY SEEMS TO BE WORKINGish?
-### NOT SURE WHAT'S UP WITH THE SLICING....
 
 ### District PDF results
-test <- res_comb %>% 
+res_pdf_district <- readRDS("data/cleaned_R_results/res_pdf_district.RDS")
+test <- res_pdf_district %>% 
+  rename(district = districtnumber) %>% 
   calc_compet()
+## NEED TO CLARIFY WHAT TO DO WHEN *UNCONTESTED* WINNING MARGIN = 100%?
 
 ### City-wide PDF results -----------------------------------------------------------
 res_pdf_city <- readRDS("data/cleaned_R_results/res_pdf_city.RDS")
-res_compet <- lapply(res_pdf_city, calc_compet) %>% bind_rows()
-View(res_compet)
+test_city <- res_pdf_district %>% 
+  mutate(district = NA) %>% 
+  calc_compet()
+glimpse(test_city)
