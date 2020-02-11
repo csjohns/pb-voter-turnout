@@ -22,29 +22,30 @@ source("BOE_scraper_funs.R")
 # 
 
 
-extract_areas('https://www.vote.nyc.ny.us/downloads/pdf/results/2010/General/20.7NewYork64AssemblyRecap.pdf', pages = 2)
+# extract_areas('https://www.vote.nyc.ny.us/downloads/pdf/results/2010/General/20.7NewYork64AssemblyRecap.pdf', pages = 2)
 # locate_areas(links_rel[p])
-
-tab <- extract_tables(links_rel[p],
-                      guess = F,
-                      area = list(c(243.84365,54.45601,475.70901,596.90121),
-                      c(79.57003,46.75569,392.71661,485.67428),
-                      c(82.99240,51.03364,736.66450,482.25191),
-                      c(77.85885,50.17805,354.21498,491.66342),
-                      c(81.28122, 47.61128,732.38654,492.51901 ),
-                      c( 80.42562,45.90009,357.63735,483.96309 )))
+# 
+# tab <- extract_tables(links_rel[p],
+#                       guess = F,
+#                       area = list(c(243.84365,54.45601,475.70901,596.90121),
+#                       c(79.57003,46.75569,392.71661,485.67428),
+#                       c(82.99240,51.03364,736.66450,482.25191),
+#                       c(77.85885,50.17805,354.21498,491.66342),
+#                       c(81.28122, 47.61128,732.38654,492.51901 ),
+#                       c( 80.42562,45.90009,357.63735,483.96309 )))
 
 ## download BO results pages for each election of interest: ----
-urls <- tribble(~elections, ~urls, ~pages,
-                "mayor_2009_prim", "https://www.vote.nyc.ny.us/downloads/pdf/results/2009/Primary/1.1CrossoverDemMayorRecap.pdf", "7:10",
-                "mayor_2009_gen",  "https://www.vote.nyc.ny.us/downloads/pdf/results/2009/General/1.11CitywideMayorRecap.pdf", "10:15",
-                "senate_2010_prim", "https://www.vote.nyc.ny.us/downloads/pdf/results/2009/Primary/1.1CrossoverDemMayorRecap.pdf", "7:10",
-                "senate_2010_gen", "https://www.vote.nyc.ny.us/downloads/pdf/results/2010/General/4.1CitywideUSSenateFullTermRecap.pdf", "11:17",
-                "ag_2010_prim", "https://www.vote.nyc.ny.us/downloads/pdf/results/2010/Primary/1.1CitywideDemCrossoverAttorneyGeneralRecap.pdf", "12:19",
-                "ag_2010_gen", "https://www.vote.nyc.ny.us/downloads/pdf/results/2010/General/3.1CitywideAttorneyGeneralRecap.pdf", "11:16",
-                "gov_2010_gen","https://www.vote.nyc.ny.us/downloads/pdf/results/2010/General/1.1CitywideGovernorRecap.pdf", "17:27",
-                "mayor_2013_prim", "https://www.vote.nyc.ny.us/downloads/pdf/results/2013/2013SeptemberPrimaryElection/01011000000Citywide%20Democratic%20Mayor%20Citywide%20Recap.pdf", "8:10",
-                "mayor_2013_gen", "https://www.vote.nyc.ny.us/downloads/pdf/results/2013/2013GeneralElection/00001100000Citywide%20Mayor%20Citywide%20Recap.pdf" , "21:33")
+## pre-filtering to only keep dem primary
+urls <- tribble(~elections, ~date, ~urls, ~pages,
+                "mayor_2009_prim", "09/15/2009", "https://www.vote.nyc.ny.us/downloads/pdf/results/2009/Primary/1.1CrossoverDemMayorRecap.pdf", "7:10",
+                "mayor_2009_gen", "11/03/2009", "https://www.vote.nyc.ny.us/downloads/pdf/results/2009/General/1.11CitywideMayorRecap.pdf", "10:15",
+                "senate_2010_prim", "09/14/2010", "https://www.vote.nyc.ny.us/downloads/pdf/results/2009/Primary/1.1CrossoverDemMayorRecap.pdf", "7:10",
+                "senate_2010_gen", "11/02/2010", "https://www.vote.nyc.ny.us/downloads/pdf/results/2010/General/4.1CitywideUSSenateFullTermRecap.pdf", "11:17",
+                "ag_2010_prim", "09/14/2010", "https://www.vote.nyc.ny.us/downloads/pdf/results/2010/Primary/1.1CitywideDemCrossoverAttorneyGeneralRecap.pdf", "12:19",
+                "ag_2010_gen", "11/02/2010", "https://www.vote.nyc.ny.us/downloads/pdf/results/2010/General/3.1CitywideAttorneyGeneralRecap.pdf", "11:16",
+                "gov_2010_gen", "11/02/2010", "https://www.vote.nyc.ny.us/downloads/pdf/results/2010/General/1.1CitywideGovernorRecap.pdf", "17:27",
+                "mayor_2013_prim", "09/10/2013", "https://www.vote.nyc.ny.us/downloads/pdf/results/2013/2013SeptemberPrimaryElection/01011000000Citywide%20Democratic%20Mayor%20Citywide%20Recap.pdf", "8:10",
+                "mayor_2013_gen", "11/05/2013", "https://www.vote.nyc.ny.us/downloads/pdf/results/2013/2013GeneralElection/00001100000Citywide%20Mayor%20Citywide%20Recap.pdf" , "21:33")
 
 res_all <- vector("list", length = nrow(urls))
 names(res_all) <- urls$elections
@@ -86,14 +87,18 @@ for (p in seq_along(urls$urls)) {
     }
   }
 res_all_backup <- res_all
+
+
+res_all <- res_all_backup
 ## clean up votes - label, exclude write in and ballot classifiers, convert total votes to columnn and cut from rows
 for (d in seq_along(res_all)) {
   res_all[[d]]$election <- urls$elections[d]
+  res_all[[d]]$date <- urls$date[d]
   
   res_all[[d]] <- res_all[[d]] %>% 
     separate(election, into = c("office", "year", "election"), sep = "_") %>%
-    mutate(office = recode(office, "ag" = "attorney general"),
-           election = recode(election, "prim" = "primary", "gen" = "general")) %>%
+    mutate(office = recode(office, "ag" = "Attorney General", "mayor" = "Mayor", "senate" = "US Senator", "gov" = "Governor"),
+           election = recode(election, "prim" = "Primary Election", "gen" = "General Election")) %>%
     filter(!str_detect(toupper(group), "WRITE-IN|EMERGENCY|AFFIDAVIT|ABSENTEE|PUBLIC COUNTER|UNRECORDED|TOTAL BALLOTS|FEDERAL|SPECIAL PRESIDENTIAL|APPLICABLE BALLOTS"))
   
   res_all[[d]]$totalvotes = unique(res_all[[d]]$votes[str_detect(toupper(res_all[[d]]$group), "TOTAL VOTES")])
@@ -101,12 +106,15 @@ for (d in seq_along(res_all)) {
     filter(!str_detect(toupper(res_all[[d]]$group), "TOTAL VOTES"))
 }
 
-clean_candidates <- function(df) {
-  df %>% separate(group, c("candidate", "party"), sep = " \\(") %>%
-    mutate(party = str_replace(party, "\\)", "")) %>%
-    mutate_at(vars(candidate, party), str_trim) 
-}
-
-
 res_all <- lapply(res_all, clean_candidates)
 
+# combine into one df
+res_city <- bind_rows(res_all)
+
+# add party = democratic party for all primary elections
+res_city <- res_city %>% 
+  mutate(party = if_else(election == "Primary Election", "Democratic Party", NA_character_))
+
+glimpse(res_city)
+res_city %>% saveRDS("data/cleaned_R_results/res_pdf_city.RDS")
+        

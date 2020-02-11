@@ -56,6 +56,9 @@ names(res_all) <- urls
 
 alllinks <- vector("list", 5)
 names(alllinks) <- urls
+# rawlinks <- vector("list", 5)
+# names(rawlinks) <- urls
+
 errors <- vector("character")
 
 for (u in urls) {
@@ -69,10 +72,12 @@ for (u in urls) {
   
   # filter to relevant links and cleanup
   # links_ed <- links[str_detect(links, "EDLevel\\.csv$")] 
-  links_rel <- links[str_detect(links, "Council|Congress|Cong\\d|State\\s?Senat|Senate\\d|Assembly")]
+  links_rel <- links[str_detect(tolower(links), "council|congress|cong\\d|state(%20| )?senat|senate(%20| )?\\d|\\d+senat|assembly")] ##have visually inspected remainder to ensure all are covered here.
+  links_rel <- links_rel[!str_detect(tolower(links_rel), "us%20senat|states%20senat")] # remove US senators that snuck in from spaces
   links_rel <- str_replace(links_rel, "^../..", "https://vote.nyc.ny.us")
   links_rel[!str_detect(links_rel, "^https://vote.nyc.ny.us")] <- paste0("https://vote.nyc.ny.us", links_rel[!str_detect(links_rel, "^https://vote.nyc.ny.us")])
   alllinks[[u]] <- links_rel
+  # rawlinks[[u]] <- links
   
   res_year <- vector("list", length = length(links_rel))
   names(res_year) <- str_split(links_rel,  "20\\d\\d/", simplify = T)[,2]
@@ -143,6 +148,7 @@ res_all_backup <- res_all
 # res_all_backup <- readRDS("boe_dist_pdf_all.Rds")
 # saveRDS(res_all_backup, "boe_dist_pdf_all.Rds")
 
+
 # loading backup
 res_all <- res_all_backup
 
@@ -168,7 +174,7 @@ res_all[["http://www.vote.nyc.ny.us/html/results/2013.shtml"]] <-
 
 for (d in seq_along(res_all)) {
   res_all[[d]] <- res_all[[d]] %>% 
-    filter(!str_detect(toupper(group), "WRITE-IN|EMERGENCY|AFFIDAVIT|ABSENTEE|PUBLIC COUNTER|UNRECORDED|TOTAL BALLOTS|FEDERAL|SPECIAL PRESIDENTIAL|APPLICABLE BALLOTS|BLANK|INVALID"))
+    filter(!str_detect(toupper(group), "WRITE-IN|EMERGENCY|AFFIDAVIT|ABSENTEE|PUBLIC COUNTER|UNRECORDED|TOTAL BALLOTS|FEDERAL|SPECIAL PRESIDENTIAL|APPLICABLE BALLOTS|BLANK|INVALID|OVERVOTED"))
   
   res_all[[d]] <- res_all[[d]] %>% 
     group_by(election,date,scope,office,district,year) %>% 
@@ -187,10 +193,10 @@ res_all <- lapply(res_all, split_scope)
 lapply(res_all, test_crossover_inclusive)
 
 # manual investigation ---------------
-res_all[[3]] %>% 
-  filter(election == "Primary Election 2010" & 
-           str_detect(office, "Democratic State Senator") & 
-           district == "31st Senatorial District") %>%
+res_all[[4]] %>% 
+  filter(election == "General Election" & 
+           str_detect(office, "State Senator") & 
+           district == "26th Senatorial District") %>%
   View()
 # manually confirmed against BOE - crossover is good
 # res_all[[3]] %>% 
@@ -200,11 +206,9 @@ res_all[[3]] %>%
          district == "28th Senatorial District") %>%
   View()
 
-## ignore the weird 2012 7th congr results - they are contractory on BOE site, keep crossover only
+## ignore the weird 2012 7th congr & 26th senatorial results - they are contractory on BOE site, keep crossover only
 ## something weird going on - general 13th crossover in twice??  richmond and xover had adjusted results (2 additional votes)
 ##   It's too small to change the final percents (less than 0.01% change), so removing manual entries to save reformatting trouble
-
-# (all senate district mismatches are due to rel link filter - fixed for next rerun (exluded Senate28 etc formats, w/o "state")
 
 ### Filter out crossover redundancies ------------------------------------------------------
 filter_xover <- function(results) {
@@ -262,4 +266,19 @@ res_filtered <- lapply(res_filtered, filter_office)
 ### Scope, Party, Office mannagement --------------------------------------------------------------------------------------------
 res_comb <- bind_rows(res_filtered)
 
-## STILL NEED TO CLEAN/STANDARDIZE DISTRICT!!
+# cleaning up district & office
+# any(str_detect(res_comb$district, "\\d{3}")) # checking no 3 digit districts
+# checked crosstabs to original to confirm recording structure correct
+res_comb <- res_comb %>% 
+  mutate(districtnumber = str_extract(district, "\\d\\d?")) 
+res_comb <- res_comb %>% 
+  mutate(office = case_when(str_detect(office, "State Senator") ~ "SD",
+                            str_detect(office, "Member of the Assembly") ~ "AD",
+                            str_detect(office, "City Council") ~ "Member of the City Council",
+                            str_detect(office, "Congress") ~ "Representative in Congress",
+                            str_detect(office, "Member of the Assembly") ~ "AD",
+                            TRUE ~ office))
+  
+glimpse(res_comb)
+
+res_comb %>% select(-district, -url) %>% saveRDS("data/cleaned_R_results/res_pdf_district.RDS")

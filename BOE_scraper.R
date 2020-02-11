@@ -1,7 +1,7 @@
 ###
 ### scrape BOE for electronic ED results for specified elections (currently 2017)
 ###
-
+## THIS NEEDS ADJUSTING TO ACCOUNT FOR THE ELECTION PARTY (PARTY/INDEPENDENT BODY)
 
 library(rvest)
 library(dplyr)

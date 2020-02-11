@@ -63,12 +63,12 @@ test_single_tot <- function(x) {
 test_crossover_inclusive <- function(results) {
   xovertest <- results %>% 
     group_by(election, date, office, district, year) %>% 
-    mutate(crossover = check_xover(scope)) %>% #View()
-    mutate(isxover = str_detect(tolower(scope), "crossover")) %>% 
-    group_by(election, date, office, district, year, candidate, cand_party, isxover) %>% #grouping by all but scope in order to only sum across non-xover scopes
+    mutate(crossover = check_xover(county)) %>% #View()
+    mutate(isxover = str_detect(tolower(county), "crossover")) %>% 
+    group_by(election, party, date, office, district, year, candidate, cand_party, isxover) %>% #grouping by all but scope in order to only sum across non-xover scopes
     mutate(totalvotes_xoversplit = sum(totalvotes)) #%>% View()
   xoversum <- xovertest %>% 
-    group_by(election, date, office, district, year) %>% 
+    group_by(election, party, date, office, district, year) %>% 
     summarize(allequal = test_single_tot(totalvotes_xoversplit)) 
   if (any(!xoversum$allequal)) {
     res <- xoversum %>% filter(!allequal)
