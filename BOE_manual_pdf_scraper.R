@@ -3,7 +3,7 @@
 
 source("BOE_scraper_funs.R")
 
-manual <- readr::read_csv("HJC_example_BOE_total.csv") %>% 
+manual <- readr::read_csv("data/BOE_raw/BOE_manual.csv") %>% 
   select(-X1)
 names(manual) <- c("group", "votes", "district", "scope", "year", "election", "date")
 manual <- manual %>% 
