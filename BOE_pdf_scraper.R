@@ -72,8 +72,8 @@ for (u in urls) {
   
   # filter to relevant links and cleanup
   # links_ed <- links[str_detect(links, "EDLevel\\.csv$")] 
-  links_rel <- links[str_detect(tolower(links), "council|congress|cong\\d|state(%20| )?senat|senate(%20| )?\\d|\\d+senat|assembly")] ##have visually inspected remainder to ensure all are covered here.
-  links_rel <- links_rel[!str_detect(tolower(links_rel), "us%20senat|states%20senat")] # remove US senators that snuck in from spaces
+  links_rel <- links[str_detect(tolower(links), url_include_string)] ##have visually inspected remainder to ensure all are covered here.
+  links_rel <- links_rel[!str_detect(tolower(links_rel), url_exclude_string)] # remove US senators that snuck in from spaces
   links_rel <- str_replace(links_rel, "^../..", "https://vote.nyc.ny.us")
   links_rel[!str_detect(links_rel, "^https://vote.nyc.ny.us")] <- paste0("https://vote.nyc.ny.us", links_rel[!str_detect(links_rel, "^https://vote.nyc.ny.us")])
   alllinks[[u]] <- links_rel
@@ -174,7 +174,7 @@ res_all[["http://www.vote.nyc.ny.us/html/results/2013.shtml"]] <-
 
 for (d in seq_along(res_all)) {
   res_all[[d]] <- res_all[[d]] %>% 
-    filter(!str_detect(toupper(group), "WRITE-IN|EMERGENCY|AFFIDAVIT|ABSENTEE|PUBLIC COUNTER|UNRECORDED|TOTAL BALLOTS|FEDERAL|SPECIAL PRESIDENTIAL|APPLICABLE BALLOTS|BLANK|INVALID|OVERVOTED"))
+    filter_ballot_counts()
   
   res_all[[d]] <- res_all[[d]] %>% 
     group_by(election,date,scope,office,district,year) %>% 

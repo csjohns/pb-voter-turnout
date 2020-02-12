@@ -45,7 +45,12 @@ urls <- tribble(~elections, ~date, ~urls, ~pages,
                 "ag_2010_gen", "11/02/2010", "https://www.vote.nyc.ny.us/downloads/pdf/results/2010/General/3.1CitywideAttorneyGeneralRecap.pdf", "11:16",
                 "gov_2010_gen", "11/02/2010", "https://www.vote.nyc.ny.us/downloads/pdf/results/2010/General/1.1CitywideGovernorRecap.pdf", "17:27",
                 "mayor_2013_prim", "09/10/2013", "https://www.vote.nyc.ny.us/downloads/pdf/results/2013/2013SeptemberPrimaryElection/01011000000Citywide%20Democratic%20Mayor%20Citywide%20Recap.pdf", "8:10",
-                "mayor_2013_gen", "11/05/2013", "https://www.vote.nyc.ny.us/downloads/pdf/results/2013/2013GeneralElection/00001100000Citywide%20Mayor%20Citywide%20Recap.pdf" , "21:33")
+                "mayor_2013_gen", "11/05/2013", "https://www.vote.nyc.ny.us/downloads/pdf/results/2013/2013GeneralElection/00001100000Citywide%20Mayor%20Citywide%20Recap.pdf" , "21:33",
+                "mayor_2017_gen", "11/07/2017", "https://vote.nyc.ny.us/downloads/pdf/election_results/2017/20171107General%20Election/00001100000Citywide%20Mayor%20Citywide%20Recap.pdf", "56:101",
+                "mayor_2017_prim", "09/12/2017", "https://vote.nyc.ny.us/downloads/pdf/election_results/2017/20170912Primary%20Election/01001100000Citywide%20Democratic%20Mayor%20Citywide%20Recap.pdf", "25:43",
+                "gov_2014_gen", "11/04/2014", "https://vote.nyc.ny.us/downloads/pdf/election_results/2014/20141104General%20Election/00000500000Citywide%20Governor%20Lieutenant%20Governor%20Citywide%20Recap.pdf", "26:44",
+                "gov_2014_prim", "09/09/2014", "https://vote.nyc.ny.us/downloads/pdf/election_results/2014/20140909Primary%20Election/01000400000Citywide%20Democratic%20Governor%20Citywide%20Recap.pdf", "13:19",
+                "ag_2014_gen", "11/04/2018", "https://vote.nyc.ny.us/downloads/pdf/election_results/2014/20141104General%20Election/00000800000Citywide%20Attorney%20General%20Citywide%20Recap.pdf", "12:18")
 
 res_all <- vector("list", length = nrow(urls))
 names(res_all) <- urls$elections

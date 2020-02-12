@@ -8,6 +8,23 @@
 ### 
 ##############################################################################################################################
 
+### Common functions/resources ------------------------------------------------------------------------
+
+url_include_string <- "council|congress|cong\\d|state(%20| )?senat|senate(%20| )?\\d|\\d+senat|assembly"
+url_exclude_string <- "us%20senat|states%20senat"
+ballot_exclusions <- "WRITE-IN|EMERGENCY|AFFIDAVIT|ABSENTEE|PUBLIC COUNTER|UNRECORDED|TOTAL BALLOTS|FEDERAL|SPECIAL PRESIDENTIAL|APPLICABLE BALLOTS|BLANK|INVALID|OVERVOTED"
+
+
+filter_ballot_counts <- function(df) {
+  df %>% 
+    filter(!str_detect(toupper(group), ballot_exclusions))
+}
+
+clean_candidates <- function(df) {
+  df %>% separate(group, c("candidate", "cand_party"), sep = " \\(") %>%
+    mutate(cand_party = str_replace(cand_party, "\\)", "")) %>%
+    mutate_at(vars(candidate, cand_party), str_trim) 
+}
 
 ### Functions for PDF scraping ----------------------------------------------------
 
@@ -39,11 +56,6 @@ collapse_clean_tabs <- function(reslist) {
   out
 }
 
-clean_candidates <- function(df) {
-  df %>% separate(group, c("candidate", "cand_party"), sep = " \\(") %>%
-    mutate(cand_party = str_replace(cand_party, "\\)", "")) %>%
-    mutate_at(vars(candidate, cand_party), str_trim) 
-}
 
 split_scope <- function(df) {
   # split scope into election geography and party (if any)
@@ -78,3 +90,78 @@ test_crossover_inclusive <- function(results) {
   res
 }
 
+### Functions for CSV ED level scraping-------------------------------
+## function to scrape individual csv 
+scrape_csv <- function(url) {
+  res <- read_html(url)
+  # extract links
+  links <- res %>% 
+    html_nodes("a") %>% html_attr("href")
+  
+  # filter to relevant links and cleanup
+  links <- links[str_detect(links, "EDLevel\\.csv$")] 
+  links_rel <- links[str_detect(tolower(links), url_include_string)] ##have visually inspected remainder to ensure all are covered here.
+  links_rel <- links_rel[!str_detect(tolower(links_rel), url_exclude_string)] # remove US senators that snuck in from spaces
+  links_rel <- str_replace(links_rel, "^../..", "https://vote.nyc.ny.us")
+  links_rel[!str_detect(links_rel, "^https://vote.nyc.ny.us")] <- paste0("https://vote.nyc.ny.us", links_rel[!str_detect(links_rel, "^https://vote.nyc.ny.us")])
+  
+  res_year <- vector("list", length = length(links_rel))
+  names(res_year) <- str_split(links_rel,  "20\\d\\d/", simplify = T)[,2]
+  
+  for (p in seq_along(links_rel)){
+    raw <- try(read.csv(links_rel[p], as.is = T))
+    # replace bad csvs with new pull, trim leading 11 cols and replace with header from first row
+    if (ncol(raw) == 22) {
+      raw <- read.csv(links_rel[p], as.is = T, header = FALSE)
+      header <- raw[1,1:11]
+      header <- str_replace_all(header, "/| ", ".")
+      raw <- raw[, 12:22]
+      names(raw) <- header
+      
+    } 
+    raw$url <- links_rel[p]
+    raw$year <- str_remove(names(which(urls == url)), "r") # bad form -depends on object (urls) expected in global environment :p
+    res_year[[p]] <- raw
+  }
+  res_year
+}
+
+
+total_ed_votes <- function(df) {
+  if(!is.numeric(df$Tally)) {
+    df$Tally <- str_remove_all(df$Tally, ",")
+    df$Tally <- as.numeric(df$Tally)
+    message(paste0("File ", df$url, " has non-numeric Tally. Coercing to Numeric. ", sum(is.na(df$Tally)), " records coerced to NA"))
+  }
+  df %>% 
+    filter(!str_detect(toupper(Unit.Name), ballot_exclusions)) %>% 
+    group_by(AD, ED) %>% 
+    mutate(totalvotes = sum(Tally)) %>% 
+    filter(!str_detect(toupper(Unit.Name), "SCATTERED")) %>% 
+    ungroup()
+}
+
+
+clean_ed_results <- function(df) {
+  df %>% 
+    rename(group = Unit.Name,
+           district = District.Key,
+           office = Office.Position.Title,
+           votes = Tally,
+           party = Party.Independent.Body, 
+           county = County) %>% 
+    mutate(ed  = paste(AD, str_pad(ED, width = 3, side = "left", pad = 0), sep = "-")) %>%
+    separate(Event, c("election", "date"), sep = " - ") %>%
+    clean_candidates() %>% 
+    select(candidate, cand_party, votes, election, date, county, party, office, year, totalvotes, district, ed) %>% 
+    distinct() # to remove eds duplicated by crossovers
+}
+
+aggregate_eds <- function(df){
+  df %>% 
+    distinct() %>% 
+    group_by(candidate, cand_party, election, date, party, office, year, district) %>% # leaving out county as otherwise have to sum up again to => crossover
+    summarize(votes = sum(votes),
+              totalvotes = sum(totalvotes)) %>% 
+    ungroup()
+}
