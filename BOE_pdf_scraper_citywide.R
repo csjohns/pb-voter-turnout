@@ -52,9 +52,6 @@ urls <- tribble(~elections, ~date, ~urls, ~pages,
                 "gov_2014_prim", "09/09/2014", "https://vote.nyc.ny.us/downloads/pdf/election_results/2014/20140909Primary%20Election/01000400000Citywide%20Democratic%20Governor%20Citywide%20Recap.pdf", "13:19",
                 "ag_2014_gen", "11/04/2018", "https://vote.nyc.ny.us/downloads/pdf/election_results/2014/20141104General%20Election/00000800000Citywide%20Attorney%20General%20Citywide%20Recap.pdf", "12:18")
 
-res_all <- vector("list", length = nrow(urls))
-names(res_all) <- urls$elections
-
 # for (u in 1:nrow(urls)) {
 #   res_el <- extract_areas(urls$urls[u], pages = eval(parse(text = urls$pages[u])))
 #   print(res_el)
@@ -104,7 +101,7 @@ for (d in seq_along(res_all)) {
     separate(election, into = c("office", "year", "election"), sep = "_") %>%
     mutate(office = recode(office, "ag" = "Attorney General", "mayor" = "Mayor", "senate" = "US Senator", "gov" = "Governor"),
            election = recode(election, "prim" = "Primary Election", "gen" = "General Election")) %>%
-    filter(!str_detect(toupper(group), "WRITE-IN|EMERGENCY|AFFIDAVIT|ABSENTEE|PUBLIC COUNTER|UNRECORDED|TOTAL BALLOTS|FEDERAL|SPECIAL PRESIDENTIAL|APPLICABLE BALLOTS"))
+    filter(!str_detect(toupper(group), "WRITE-IN|EMERGENCY|AFFIDAVIT|ABSENTEE|PUBLIC COUNTER|UNRECORDED|TOTAL BALLOTS|FEDERAL|SPECIAL PRESIDENTIAL|APPLICABLE BALLOTS|THEREOF"))
   
   res_all[[d]]$totalvotes = unique(res_all[[d]]$votes[str_detect(toupper(res_all[[d]]$group), "TOTAL VOTES")])
   res_all[[d]] <- res_all[[d]] %>% 
