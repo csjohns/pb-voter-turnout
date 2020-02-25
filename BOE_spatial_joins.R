@@ -151,7 +151,7 @@ voterfile_sf <- sdshape %>%
 
 ### Finally, save to disk ----
 st_drop_geometry(voterfile_sf) %>% 
-  saveRDS( "voterfile_oldgeo.RDS")
+  saveRDS( "data/cleaned_R_results/voterfile_oldgeo.RDS")
 
 
   

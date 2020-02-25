@@ -26,6 +26,16 @@ clean_candidates <- function(df) {
     mutate_at(vars(candidate, cand_party), str_trim) 
 }
 
+filter_electiontype <- function(d) {
+  filter(d, str_detect(tolower(election), "general") | str_detect(tolower(election), "primary"))
+}
+
+
+filter_office <- function(d) {
+  filter(d, str_detect(tolower(office), "city council|mayor|senator|cong|member of the assembly"))
+}
+
+
 ### Functions for PDF scraping ----------------------------------------------------
 
 split_vote_cols <- function(df){

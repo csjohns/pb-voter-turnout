@@ -230,20 +230,10 @@ res_filtered <- lapply(res_all, filter_xover)
 check_vals <- function(d) {
   d %>% select(election, date) %>% distinct()
 }
-filter_electiontype <- function(d) {
-  filter(d, str_detect(tolower(election), "general") | str_detect(tolower(election), "primary"))
-}
 
 check_dists <- function(d) {table(d$district) %>% as.matrix()}
 check_office <- function(d){table(d$office) %>% as.matrix()}
 
-filter_electiontype <- function(d) {
-  filter(d, str_detect(tolower(election), "general") | str_detect(tolower(election), "primary"))
-}
-
-filter_office <- function(d) {
-  filter(d, str_detect(tolower(office), "city council|mayor|senator|cong|member of the assembly"))
-}
 
 ## Inspect election/date values
 lapply(res_filtered, check_vals)

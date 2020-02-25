@@ -103,3 +103,23 @@ summary(test_csv)
 
 hist(test_csv$vote_margin_pct_all)
 hist(test_csv$vote_margin_pct_next)
+
+table(is.na(test$district))
+table(is.na(test_city$district))
+table(is.na(test_csv$district))
+# districts are all present as they should be
+
+class(test_csv$district)
+class(test$district)
+table(is.na(as.numeric(test$district)))
+test$district <- as.numeric(test$district)
+test_city$district <- -1 
+
+all_comp <- bind_rows(test, test_csv, test_city)
+
+all_comp <- all_comp %>% 
+  filter(! year %in% c("2008", "2012", "2015", "2016") | (year %in% c("2008", "2012", "2016") & election %in% c("Primary Election 2008",
+                                                                                                                "Primary Election 2016",
+                                                                                                                "Primary Election")))
+saveRDS(all_comp, "data/cleaned_R_results/competitiveness.RDS")
+  

@@ -41,10 +41,13 @@ for (u in urls) {
 combined <- bind_rows(res_all)
 glimpse(combined)
 
+#### NEED TO RERUN AND CHECK THESE  TO DROP THE SPECIAL ELECTIONS
+
+combined <- filter_electiontype(combined)
+combined <- filter_office(combined)
+
 # save file for use
 saveRDS(combined, "data/cleaned_R_results/res_csv_district.RDS")
-
-
 
 
 ### testing code
