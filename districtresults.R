@@ -11,7 +11,8 @@ df <- read_csv("PB Elected Officials - Primary & General.csv") %>%
          dist_cand_votes = pctVotes,
          next_up = `Opponents pctVote`,
          dist_totvotes = `Total numVotes`) %>%
-  mutate(vote_margin_pct_next = dist_cand_votes - next_up) %>%
+  mutate(next_up = if_else(is.na(next_up), 1 - dist_cand_votes, next_up),
+         vote_margin_pct_next = dist_cand_votes - next_up) %>%
   group_by(district, year) %>%
   mutate(main_election = vote_margin_pct_next == min(vote_margin_pct_next),
          incumbent = year != enter_office,
