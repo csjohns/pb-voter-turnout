@@ -16,7 +16,7 @@ library(stringr)
 
 all_pb <- voterfile %>% 
   filter(pb == 1) %>% 
-  filter(!is.na(g_2014_comp) & !is.na(g_2016_comp) & !is.na(p_2014_comp) & !is.na(pp_2016_comp) & !is.na(high_school) & !is.na(majmatch) & !is.na(medhhinc)) %>% 
+  # filter(!is.na(g_2014_comp) & !is.na(g_2016_comp) & !is.na(p_2014_comp) & !is.na(pp_2016_comp) & !is.na(high_school) & !is.na(majmatch) & !is.na(medhhinc)) %>% 
   left_join(., dplyr::select(c.college, VANID, pb_match = pb, cem_group)) %>% 
   mutate(inmatch = as.numeric(!is.na(cem_group))) %>% 
   dplyr::select(-cem_group, -pb_match, -agegroup, -DoR, -Ethnicity, -ED, -County, -countycode, -tract, -City, -State, 

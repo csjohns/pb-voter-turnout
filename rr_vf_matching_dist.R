@@ -9,9 +9,9 @@
   library(data.table)
   library(MatchIt)
   library(cem)
-  
-  source("credentials.R") # loads the access credentials
-  source("dbDownload.R")
+  # 
+  # source("credentials.R") # loads the access credentials
+  # source("dbDownload.R")
   
   stringNAs <- function(x){
     ifelse(x, "", NA)
@@ -22,17 +22,18 @@
   # }
   ### Load PB data ### -------------------------------------------------------------------------------------
   
-  pb <- dbDownload(table = "pb", username = username, password = password, dbname = db.name, host = hostname, port = port)
+  # pb <- dbDownload(table = "pb", username = username, password = password, dbname = db.name, host = hostname, port = port)
 
 # load("pb_orig.Rdata")
 #pb <- pb_orig 
 #rm(pb_orig)
-pb <- pb %>% select(-DWID) %>% 
-  filter(DoR != "" & !is.na(DoR)) %>% 
-  mutate_at(vars(starts_with("pb_2")), replace_na, 0) # this line is to deal with the fact taht the row appended dist 23 voters (who didn't otherwise exist)
-pb <- pb %>% mutate(DoB = mdy(DoB),
-                    pb = 1)
+# pb <- pb %>% select(-DWID) %>%
+#   filter(DoR != "" & !is.na(DoR)) %>% 
+#   mutate_at(vars(starts_with("pb_2")), replace_na, 0) # this line is to deal with the fact taht the row appended dist 23 voters (who didn't otherwise exist)
+# pb <- pb %>% mutate(DoB = mdy(DoB),
+#                     pb = 1)
 
+pb <- readRDS("data/cleaned_R_results/pb.rds")
 # limit to only 23/39 and 2016 districts
 pbnyc <- read.csv(file = "pbnyc_district_votes.csv", as.is = TRUE)
 pb2016 <- pbnyc %>% filter(districtCycle == 1 & voteYear == 2016) 
@@ -122,19 +123,19 @@ voterfile <- voterfile  %>%
   ## recoding vote tallies to a binary voted/not voted indicator
   convLogicVote <- function(x){as.numeric(x != "")}   #function to create binary for any case with any non-empty string
   
-  voterfile <- voterfile %>% mutate(pb = ifelse(is.na(pb), 0, pb))
+  voterfile <- voterfile %>% mutate(pb = replace_na(pb, 0))
   voterfile <- voterfile %>% 
-    mutate_at(vars(starts_with("p_")), funs(convLogicVote)) %>% 
-    mutate_at(vars(starts_with("g_")), funs(convLogicVote)) %>% 
-    mutate_at(vars(starts_with("pp_")), funs(convLogicVote)) 
+    mutate_at(vars(starts_with("p_")), convLogicVote) %>% 
+    mutate_at(vars(starts_with("g_")), convLogicVote) %>% 
+    mutate_at(vars(starts_with("pp_")), convLogicVote) 
   
   ## Creating new variables for age (in years), and voting rates for years 2000-2007 (increasing granularity to aid matching/analysis)
   voterfile <- voterfile %>% 
     rowwise() %>% 
-    mutate(age = year(Sys.Date()) - year(DoB),
+    mutate(age = 2017 - year(DoB),
            g_early = sum(g_2000, g_2001, g_2002, g_2003, g_2004, g_2005, g_2006, g_2007, na.rm = TRUE),
            p_early = sum(p_2000, p_2001, p_2002, p_2003, p_2004, p_2005, p_2006, p_2007, na.rm = TRUE)) %>% 
-    group_by()
+    ungroup()
   gc()
   
 ### Including census data ### ----------------------------------------------------------------------------------------------------------------------------
@@ -155,15 +156,20 @@ voterfile <- voterfile  %>%
     mutate(majmatch = Race == majority)
   
   ##7658 PB voters in the voter file
-  ## 12-2-18 - now getting 7654 in voterfile??
+  ## 12-2-18 - now getting 7654 in voterfile?? ## 2/29-2019 - now getting 7654 in voterfile?!
+  
   
 ### Including competitiveness ----------------------------------------------------------------------
-load("compet.Rdata")  
-
-voterfile <- compet_select %>% 
-  select(-County) %>% 
-  left_join(voterfile, .)
+vf_compet <- readRDS("data/cleaned_R_results/wide_compet.rds")
+names(vf_compet) <- paste0("comp_", names(vf_compet))
   
+voterfile <- vf_compet %>% 
+  rename(VANID = "comp_VANID") %>% 
+  # select(-matches("2009_general|2010_primary|2013_general|2013_primary|2017_general")) %>% 
+  left_join(voterfile, ., by = "VANID")
+  
+rm(vf_compet)
+
 ### Including district covariates (older - need to be updated) -----------------------------------------------
 
 district_covar <- readRDS("~/PBVoterTurnoutDB/district_data2013.rds")
@@ -185,10 +191,24 @@ voterfile <- voterfile %>%
 # summary(voterfile)
 
 exact_df <- voterfile %>% 
-  select(VANID, pb,  Race, agegroup, Sex, g_early, g_2008, g_2009, g_2010, g_2011, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008) %>% 
+  select(VANID, pb,  Race, agegroup, Sex, g_early, g_2008, g_2009, g_2010, 
+         g_2011, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008) %>% 
   na.omit()
 
-m.exact <- matchit(pb ~ Race +agegroup +Sex + g_early + g_2008 + g_2009 + g_2010 + g_2011 + p_early + p_2008 + p_2009 + p_2010 + pp_2004 + pp_2008, data = exact_df, method = "exact")
+# votehash <- voterfile %>% 
+#   select(-VANID,-pb, -Race, -agegroup, -Sex) %>% 
+#   as.matrix() %>% 
+#   apply(MARGIN = 1, paste0, collapse = "")
+
+exact_df$votehash <-  votehash
+exact_df <-  exact_df %>% 
+  # select(VANID,pb, Race, agegroup, Sex, votehash) %>% 
+  na.omit()
+
+rm(votehash)
+
+m.exact <- matchit(pb ~ agegroup + Sex + g_early + g_2008 + g_2009 + g_2010 + 
+                   g_2011 + p_early + p_2008 + p_2009 + p_2010 + pp_2004 + pp_2008, data = exact_df, method = "exact")
 
 treat_sub <- unique(m.exact$subclass[m.exact$treat == TRUE])
 table(m.exact$treat, is.na(m.exact$subclass))
@@ -201,15 +221,16 @@ gc()
 ### Creating matching dataframe based on the potential matches from m.exact --------------------------------------------------------------------------------
 matching_df <- voterfile %>%
   filter(VANID %in% matchable_vans) %>% 
-  rename(comp_g_2016 = g_2016_comp, comp_g_2014 = g_2014_comp, comp_p_2014 = p_2014_comp, comp_pp_2016 = pp_2016_comp) %>% 
+  # rename(comp_g_2016 = g_2016_comp, comp_g_2014 = g_2014_comp, comp_p_2014 = p_2014_comp, comp_pp_2016 = pp_2016_comp) %>% 
   mutate(agegroup = cut(age, breaks = c(0, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60,65, 70,75, 80,85, 90, Inf))) %>% 
   select(VANID, pb, Race, agegroup, Sex, 
          g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
          white, college, medhhinc , majmatch 
          , starts_with("comp")
-         , white_pct, black_pct, noneng_pct#, votespop
+         # , white_pct, black_pct, noneng_pct#, votespop
          # ,g_2014_comp, g_2016_comp, p_2014_comp, pp_2016_comp
   ) %>% 
+  mutate_at(vars(starts_with("comp")), replace_na, 1) %>% 
   na.omit()
 
 # save(voterfile, matching_df, file = "vf_dataformatching_dist.RData")
@@ -227,13 +248,18 @@ df_cutpoints <- list(
   # , black_pct = BAMMtools::getJenksBreaks(matching_df$black_pct, 5)
   # , noneng_pct = BAMMtools::getJenksBreaks(matching_df$noneng_pct, 5)
   # , votespop = BAMMtools::getJenksBreaks(matching_df$votespop, 5)
-  , black_pct = c(0, .13, .45, 1)
-  , noneng_pct = c(0, .375, .56)
+  # , black_pct = c(0, .13, .45, 1)
+  # , noneng_pct = c(0, .375, .56)
   # , votespop = quantile(matching_df$votespop, c(0,.2,.4,.6,.8,1))
-  , comp_g_2014 = quantile(compet_select$g_2014_comp, probs = c(0, .25, .75, 1), na.rm = TRUE),
-  comp_g_2016 = quantile(compet_select$g_2016_comp, probs = c(0, .25, .75, 1), na.rm = TRUE),
-  comp_p_2014 = quantile(compet_select$p_2014_comp, probs = c(0, .25, .75, 1), na.rm = TRUE),
-  comp_pp_2016 = quantile(compet_select$pp_2016_comp, probs = c(0, .25, .75, 1), na.rm = TRUE)
+  , comp_2008_primary = quantile(matching_df$comp_2008_primary, c(0, 0.5, 1))
+  , comp_2009_primary = quantile(matching_df$comp_2009_primary, c(0, 0.5, 1))
+  , comp_2010_general = quantile(matching_df$comp_2010_general, c(0, 0.5, 1))
+  , comp_2012_primary = quantile(matching_df$comp_2012_primary, c(0, 0.5, 1))
+  , comp_2014_general = quantile(matching_df$comp_2014_general, c(0, 0.5, 1))
+  , comp_2014_pp = quantile(matching_df$comp_2014_pp, c(0, 0.5, 1))
+  , comp_2014_primary = quantile(matching_df$comp_2014_primary, c(0, 0.5, 1))
+  , comp_2016_primary = quantile(matching_df$comp_2016_primary, c(0, 0.5, 1))
+  , comp_2017_primary = quantile(matching_df$comp_2017_primary, c(0, 0.5, 1))
 )
 
 
@@ -288,7 +314,7 @@ c.college <- c.match
 
 ### creating analysis DF by joining voterfile to the CEM match output - effectively returns voterfile info filtered to matched dataset -----
 vf_analysis <- c.college %>% dplyr::select(-n_treat, -n_control) %>% 
-  left_join(voterfile) %>% 
+  left_join(voterfile)# %>%
   rename(comp_g_2016 = g_2016_comp, comp_g_2014 = g_2014_comp, comp_p_2014 = p_2014_comp, comp_pp_2016 = pp_2016_comp)
 
 # vf_analysis %>% filter(pb == 1) %>% select(Race, Sex, medhhinc, college, white, g_early, p_early, age, majmatch) %>% summary()
