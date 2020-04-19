@@ -202,6 +202,9 @@ voterfile <- vf_compet %>%
   select(-matches("2009_general|2010_primary|2013_general|2013_primary|2017_general|2014_pp")) %>%
   left_join(voterfile, ., by = "VANID")
 
+voterfile <- voterfile %>% 
+  mutate_at(vars(starts_with("comp")), replace_na, 1) 
+
 rm(vf_compet)
 
 ### Including district covariates ------------------------------------------------------------------------------
