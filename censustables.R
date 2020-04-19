@@ -14,8 +14,8 @@ tractID <- function(acsdata){
 }
 
 # Population counts
-B03002 <- acs.fetch(endyear = 2015,  geography = geo,
-                    table.number = "B03002", col.names = "pretty")
+B03002 <- acs.fetch(endyear = 2016,  geography = geo,
+                    table.number = "B03002", col.names = "pretty", key = censuskey)
 race <- data.frame(
   tract = tractID(B03002),
   B03002@estimate,
