@@ -33,11 +33,14 @@ make_analysis_vf <- function(match_res, voterfile = voterfile) {
 allout <- readRDS("data/cleaned_R_results/matching_res.RDS")
 voterfile <- readRDS("data/cleaned_R_results/voterfile_for_matching.rds")
 
-fit_lmer_model <- function(match_res) {
+preprocess_lmer <- function(match_res) {
   ## process analysis df to pb_long df for analysis (creating wide pb table along the way)
   df <- make_analysis_vf(match_res, voterfile)
   df <- create_pb_long(df)
-  
+  df
+}
+
+fit_lmer_model <- function(df) {
   #### Set reference levels for factor variables 
   df <- df %>%
     group_by() %>% 
@@ -49,9 +52,13 @@ fit_lmer_model <- function(match_res) {
                      data = df, family = binomial(), nAGQ = 0) 
   lme_final
 }
+calc_margin_effect <- function(data, model_res){
+  margins::dydx(data, model_res, "after_pb", change = c(0,1))[[1]] %>% mean() 
+}
 
 allout <- allout %>% 
-  mutate(result = map(outdf, fit_lmer_model))
+  mutate(pblong = map(outdf, preprocess_lmer)) %>% 
+  mutate(result = map(pblong, fit_lmer_model))
 glimpse(allout)
 allout <- allout %>% 
   mutate(tidyresult = map(result, tidy))
@@ -68,5 +75,22 @@ ggplot(aes(x = match_type, y = estimate, color = p.value<= 0.05) ) +
   geom_pointrange(aes(ymin = estimate-(1.96*std.error), ymax = estimate+(1.96*std.error))) +
   # ylim(c(-10, 10)) +
   coord_flip()
+
+preds <- allout %>% 
+  mutate(preds = pmap(pblong, result, calc_margin_effect))
+
+
+for (i in 1:nrow(allout)){
+  df <- pluck(allout, "pblong", i)
+  res <- pluck(allout, "result", i)
+  calc_margin_effect(df, res) %>% print()
+}  
+res1 <- pluck(allout, "result", 1)
+res2 <- pluck(allout, "result", 2)
+res3 <- pluck(allout, "result", 3)
+res4 <- pluck(allout, "result", 4)
+res5 <- pluck(allout, "result", 5)
+res6 <- pluck(allout, "result", 6)
+meaneffect <- margins::dydx(res1@frame, res1, "after_pb", change = c(0,1))[[1]] %>% mean() 
 
 
