@@ -21,3 +21,6 @@ Originals/
 *.md
 *.zip
 *.pptx
+shapefiles/
+data/
+*.docx
