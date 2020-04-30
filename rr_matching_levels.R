@@ -14,7 +14,6 @@
 ##############################################################################################################################
 
 library(purrr)
-library(here)
 
 matching_models <- tibble(match_type = c("All vars, fine", "All vars, coarse", "Excl compet", "Excl district", "Excl tract", "Only Exact"),
                           matching_fields = vector("list", 6),
@@ -66,10 +65,10 @@ coarse_group <-  list(
 varlists <- list(
   allvars = names(select(voterfile, Race, agegroup, Sex, 
                    g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
-                   white, college, medhhinc , majmatch,starts_with("comp"),white_pct, college_pct)),
+                   white, college, medhhinc , majmatch,starts_with("comp"),white_pct, college_pct, contains("incumbent"))),
   excl_compet = names(select(voterfile, Race, agegroup, Sex, 
                              g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
-                             white, college, medhhinc, majmatch, white_pct, college_pct)),
+                             white, college, medhhinc, majmatch, white_pct, college_pct, contains("incumbent"))),
   excl_district = names(select(voterfile, Race, agegroup, Sex, 
                g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
                white, college, medhhinc , majmatch)),
