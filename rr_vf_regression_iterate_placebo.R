@@ -14,6 +14,8 @@
 ###
 ##############################################################################################################################
 
+### NEED TO MAKE THIS MORE STREAMLINED - THE PRE-PROCESS STEPS WERE TAKING WAY TOO LON ~8 HOURS FOR A SINGLE ITERATION OF ALLOUT
+
 # Load libraries
 library(dplyr)
 library(tidyr)
@@ -27,26 +29,46 @@ library(margins)
 library(simcf)
 
 # functions
-source("create_pb_long.R")
+source("create_pb_long_placebo.R")
 
 limit_outdf <- function(df) {
-  df %>% 
+  nids <- n_distinct(df$VANID)
+  if(nids > 150000) {
+    sample_prop <- 150000/nids
+    df <- df %>% 
+      group_by(cem_group, pb) %>% 
+      sample_frac(sample_prop)
+  }
+  df <- df %>% 
     ungroup() %>% 
-    select(VANID, cem_group)
-}
-make_analysis_vf <- function(match_res, voterfile = voterfile) {
-  match_res %>% 
-    ungroup() %>% 
-    select(VANID, cem_group) %>% 
-    distinct() %>% 
-    left_join(voterfile)
+    select(VANID) 
+  df
 }
 
+make_analysis_vf <- function(match_res, voterfile = voterfile) {
+  filter(voterfile, VANID %in% match_res$VANID)
+}
 
 attach_competition <- function(df) {# note requires vf_compet to be loaded
-  df %>% 
-    left_join(vf_compet)
-}
+  vf_compet %>% 
+    filter(VANID %in% df$VANID) %>%  
+    left_join(df,.)
+  }
+# attach_competition <- function(df) {# note requires vf_compet to be loaded
+#   .vf_compet <- vf_compet %>% 
+#     mutate(groupid = paste(year, election_type, sep = "_")) %>% 
+#     split(.$groupid) 
+#   df <- df %>% 
+#     mutate(groupid = paste(year, election_type, sept = "_")) %>% 
+#     split(.$groupid)
+#   
+#   for (i in seq_along(df)){
+#     dfname <- names(df)[i]
+#     df[[dfname]] <- left_join(df[[dfname]], .vf_compet[[dfname]], by = c("VANID", "year", "election_type"))
+#   }
+#   df <- bind_rows(df)
+#   df
+# }
 
 create_model_data <- function(df, model_form) {
   df <- df %>% 
@@ -60,9 +82,8 @@ preprocess_lmer <- function(match_res, model_form) {
   ## process analysis df to pb_long df for analysis (creating wide pb table along the way)
   df <- make_analysis_vf(match_res, voterfile)
   df <- create_pb_long(df) %>% 
-    group_by() %>% 
+    ungroup() %>% 
     attach_competition()
-  df <- create_model_data(df, model_form)
   df
 }
 
@@ -81,7 +102,7 @@ calc_margin_effect <- function(data, model_res){
 
 ### Creating/loading matched datasets
 # source("pub_vf_matching.R")
-suffix <- ""
+suffix <- "_placebo"
 allout <- readRDS(paste0("data/cleaned_R_results/matching_res", suffix, ".RDS"))
 allout <- allout %>% 
   select(match_type, outdf)
@@ -123,7 +144,16 @@ vf_compet <- vf_compet %>%
   mutate(compet = replace_na(compet, mean(compet))) %>% 
   ungroup()
   
+## create pb_longs (w/compet)
+# .vf_compet <- vf_compet %>% 
+#   mutate(groupid = paste(year, election_type)) %>% 
+#   filter(groupid != "2016 pp") %>% 
+#   split(.$groupid) 
 
+allout <- allout %>% 
+  slice(1:4) %>%
+  mutate(pblong = map(outdf, preprocess_lmer))
+           
 ### Define model formulas
 formula_df <- tibble(model_name = c("logit_minimal_form",
                                     "logit_demog_form",
@@ -139,13 +169,13 @@ formula_df <- tibble(model_name = c("logit_minimal_form",
 
 allout <- expand_grid(allout, formula_df)
 ### Preprocess in list-columns --------------------------------------------------------------------------------------------
-
+## creating split version of vf_compet
 
 allout <- allout %>% 
-  # slice(1:5) %>% 
-  mutate(pblong = pmap(.l = list(match_res = outdf, 
+  # slice(1:5) %>%
+  mutate(pblong = pmap(.l = list(df = pblong, 
                                  model_form = model_formula),
-                       .f = preprocess_lmer)) 
+                       .f = create_model_data) )
 
 progbar <- progress_estimated(nrow(allout))
 allout <- allout %>% 
@@ -160,7 +190,7 @@ allout <- allout %>%
          AIC = map_dbl(result, AIC),
          BIC = map_dbl(result, BIC))
 allout %>% select(match_type, model_name, pblong, result) %>% 
-  saveRDS(paste0("data/cleaned_R_results/iter_regress_check", suffix, ".rds"))
+  saveRDS("D:/Gwyn/Carolina/PBturnout_iter_regress_check_placebo.rds")
 
 lmers <- allout %>%  
   select(match_type, model_name, tidyresult) %>% 

@@ -60,6 +60,7 @@ pb2016 <- pbnyc %>% filter(districtCycle == 1 & voteYear == 2016)
 ### Limit it to only non-PB districts and VANIDS
 
 pbdistricts <- unique(pbnyc$district)
+
 rm(pbnyc)
 # 
 # ## loading full voter file
@@ -78,15 +79,20 @@ rm(pbnyc)
 # voterfile <- voterfile %>% 
 #   filter(DateReg != "" & !`Voter File VANID` %in% pb$VANID) 
 
-## adding missing district info
+### Load full voterfile data ### -------------------------------------------------------------------------------------
+### Limit it to only non-PB districts and VANIDS
+
+voterfile <- fread("PersonFile20180426-11056504994/PersonFile20180426-11056504994.txt")
+voterfile <- voterfile[! RegistrationStatusName %in% c('Applicant', 'Dropped', 'Unregistered') & DateReg != ""]
+
 set.seed(92018)
-# source("vf_gis_nyccdmatch.R")
+source("vf_gis_nyccdmatch.R")
 source("pb_cleanup_addnyccd_foranalysis.R")
 
-## remove districts in pbdistricts
-# voterfile <- voterfile %>% filter(!CityCouncilName %in% pbdistricts & !is.na(CityCouncilName))
-# save(voterfile, file = "voterfile_noPB_gis.Rdata")
-load("voterfile_noPB_gis.Rdata")
+## identify PB districts; remove PB voters
+voterfile <- voterfile %>% 
+  mutate(pbdistrict = as.numeric(CityCouncilName %in% pbdistricts)) %>% 
+  filter(!`Voter File VANID` %in% pb$VANID & !is.na(CityCouncilName))
 
 # voterfile <- fread("PersonFile20180426-11056504994/PersonFile20180426-11056504994.txt")
 
@@ -131,12 +137,17 @@ voterfile <- voterfile %>%
 setdiff(names(pb), names(voterfile))
 setdiff(names(voterfile), names(pb))
 
-### Join to voter file ### -------------------------------------------------------------------------------------
-## this code works by basically appending the voters from the districts of interest to the non-pb voterfile
+### Limit voterfile to only voters in eligible districts 
 
-voterfile <- pb %>% 
-  filter(pbdistrict %in% c(23, 39, pb2016$district) | pb_2012 == 1) %>% ## this is filtering to only districts we have full/near full data for
-  bind_rows(voterfile)
+comparedist <- c(23, 39, pb2016$district)
+
+voterfile <-  pbnyc %>% 
+  filter(districtCycle == 1) %>% 
+  select(NYCCD = district, pbyear = voteYear) %>% 
+  left_join(voterfile, .) %>% 
+  filter(NYCCD %in% comparedist | pbdistrict == 0) %>% 
+  rename(pb = pbdistrict)
+
 
 ## recoding vote tallies to a binary voted/not voted indicator
 convLogicVote <- function(x){as.numeric(x != "")}   #function to create binary for any case with any non-empty string
@@ -199,7 +210,7 @@ names(vf_compet) <- paste0("comp_", names(vf_compet))
 
 voterfile <- vf_compet %>% 
   rename(VANID = "comp_VANID") %>% 
-  select(-matches("2009_general|2010_primary|2013_general|2013_primary|2017_general|2014_pp")) %>%
+  # select(-matches("2009_general|2010_primary|2013_general|2013_primary|2017_general|2014_pp")) %>%
   left_join(voterfile, ., by = "VANID")
 
 voterfile <- voterfile %>% 
@@ -220,4 +231,4 @@ voterfile <- district_covar %>%
 voterfile <- voterfile %>% 
   mutate(agegroup = cut(age, breaks = c(0, 20, 30, 40, 50, 60,70,80,Inf)))
 
-saveRDS(voterfile, "data/cleaned_R_results/voterfile_for_matching.rds")
+saveRDS(voterfile, "data/cleaned_R_results/voterfile_for_matching_placebo.rds")

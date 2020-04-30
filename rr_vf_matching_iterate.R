@@ -25,7 +25,9 @@ library(MatchIt)
 library(cem)
 
 # source("rr_vf_processing.R")
-voterfile <- readRDS("data/cleaned_R_results/voterfile_for_matching.rds")
+
+suffix <- "_placebo"
+voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching", suffix, ".rds"))
 
 #### Implementing Matching, starting with exact ###-----------------------------------------------------------------------------------------------------------------------------------------------  # 
   
@@ -59,10 +61,10 @@ allout <- matching_models %>%
 
 
 ## save matching results to disc
-saveRDS(allout, file = "data/cleaned_R_results/matching_res.RDS")
+saveRDS(allout, file = paste0("data/cleaned_R_results/matching_res", suffix, ".RDS"))
 
 ### creating analysis DF by joining voterfile to the CEM match output - effectively returns voterfile info filtered to matched dataset -----
-vf_analysis <- make_analysis_vf(allout$outdf[1], voterfile)
+# vf_analysis <- make_analysis_vf(allout$outdf[1], voterfile)
 
 ### Match balance checking ------------------------------------------------------------------------------------------------
 # select preferred match result

@@ -16,7 +16,7 @@ library(dplyr)
 library(tidyr)
 library(MatchIt)
 
-
+stopifnot(exists("suffix"))
 # summary(voterfile)
 
 exact_df <- voterfile %>% 
@@ -33,6 +33,6 @@ treat_sub <- unique(m.exact$subclass[m.exact$treat == TRUE])
 table(m.exact$treat, is.na(m.exact$subclass))
 ## filter to rows with classes
 matchable_vans <- exact_df$VANID[!is.na(m.exact$subclass)]
-saveRDS(matchable_vans, "data/cleaned_R_results/matchablevans.rds")
+saveRDS(matchable_vans, paste0("data/cleaned_R_results/matchablevans", suffix, ".rds"))
 rm(m.exact)
 gc()
