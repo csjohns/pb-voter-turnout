@@ -1,4 +1,11 @@
-### geocoding to assign unassigned voters to NYCCD
+
+
+### Geocoding to add census tracts for voterfile records missing it, based on lat long
+## File gets saved for reload - eventually should get combined with the NYCCD attachments that happen earlier
+## End of script does some comparison to the tracts as exist inthe original file. Confirm that known tracts are 
+##  basically consistent with my new geocoded tracts; my geocoding just gets more, apparently? (maybe have a cleaner shapefile now)
+
+
 library(dplyr)
 library(tidyr)
 library(sf)

@@ -1,5 +1,6 @@
-
-
+library(dplyr)
+library(stringr)
+library(tidyr)
 ## Joining census to pb table
 
 #Download census tables:
@@ -15,7 +16,7 @@ tractID <- function(acsdata){
 
 # Population counts
 B03002 <- acs.fetch(endyear = 2016,  geography = geo,
-                    table.number = "B03002", col.names = "pretty", key = censuskey)
+                    table.number = "B03002", col.names = "pretty")
 race <- data.frame(
   tract = tractID(B03002),
   B03002@estimate,
@@ -92,6 +93,7 @@ educ <- educ %>%
   ) %>%
   select(tract, high_school, college)
 
+save(educ, inc, race, file = "data/cleaned_R_results/census.Rdata")
 # pb <- pb %>% mutate(countycode = recode(County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085")) %>%
 #   mutate(countycode = ifelse(countycode %in% c("005", "047", "061", "081", "085"), countycode, NA),
 #          tract = paste0(countycode, str_pad(CensusTract, 6, "left", "0")))

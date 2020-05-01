@@ -110,7 +110,7 @@ voterfile <- voterfile %>%
 
 # Merge in census tract data
 #source("censustables.R")
-load("census.Rdata")
+load("data/cleaned_R_results/census.Rdata")
 census <- race %>% 
   left_join(inc, by = "tract") %>% 
   left_join(educ, by = "tract")

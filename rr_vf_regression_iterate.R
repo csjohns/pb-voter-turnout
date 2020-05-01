@@ -162,6 +162,7 @@ allout <- allout %>%
 allout %>% select(match_type, model_name, pblong, result) %>% 
   saveRDS(paste0("data/cleaned_R_results/iter_regress_check", suffix, ".rds"))
 
+allout <- readRDS(paste0("data/cleaned_R_results/iter_regress_check", suffix, ".rds"))
 lmers <- allout %>%  
   select(match_type, model_name, tidyresult) %>% 
   unnest(cols = tidyresult)

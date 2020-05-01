@@ -24,8 +24,8 @@ fine_cuts <- list(
   white = quantile(matching_df$white, c(0,.2,.4,.6,.8,1), na.rm = T),
   college = quantile(matching_df$college, c(0,.5,1), na.rm = T),
   medhhinc = quantile(matching_df$medhhinc, c(0,.2,.4,.6,.8,1), na.rm = T)
-  , white_pct = c(0, 0.19836858, 0.49529454 , 1)
-  , college_pct = c(0,0.21320295, 0.37701862, 1 )
+  , dist_white = c(0, 0.19836858, 0.49529454 , 1)
+  , dist_college = c(0,0.21320295, 0.37701862, 1 )
   , comp_2008_primary = quantile(matching_df$comp_2008_primary, c(0, 0.5, 1), na.rm = T)
   , comp_2009_primary = quantile(matching_df$comp_2009_primary, c(0, 0.5, 1), na.rm = T)
   , comp_2010_general = quantile(matching_df$comp_2010_general, c(0, 0.5, 1), na.rm = T)
@@ -40,8 +40,8 @@ coarse_cuts <- list(
   white = quantile(matching_df$white, c(0, 0.5, 1), na.rm = T),
   college = quantile(matching_df$college, c(0,.5,1), na.rm = T),
   medhhinc = quantile(matching_df$medhhinc, c(0,.5,1), na.rm = T)
-  , white_pct = quantile(matching_df$white_pct, c(0,.5,1), na.rm = T)
-  , college_pct = quantile(matching_df$college_pct, c(0,.5,1), na.rm = T)
+  , dist_white = quantile(matching_df$dist_white, c(0,.5,1), na.rm = T)
+  , dist_college = quantile(matching_df$dist_college, c(0,.5,1), na.rm = T)
   , comp_2008_primary = quantile(matching_df$comp_2008_primary, c(0, 0.5, 1), na.rm = T)
   , comp_2009_primary = quantile(matching_df$comp_2009_primary, c(0, 0.5, 1), na.rm = T)
   , comp_2010_general = quantile(matching_df$comp_2010_general, c(0, 0.5, 1), na.rm = T)
@@ -65,16 +65,16 @@ coarse_group <-  list(
 varlists <- list(
   allvars = names(select(voterfile, Race, agegroup, Sex, 
                    g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
-                   white, college, medhhinc , majmatch,starts_with("comp"),white_pct, college_pct, contains("incumbent"))),
+                   white, college, medhhinc , majmatch,starts_with("comp"),dist_white, dist_college, contains("incumbent"))),
   excl_compet = names(select(voterfile, Race, agegroup, Sex, 
                              g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
-                             white, college, medhhinc, majmatch, white_pct, college_pct, contains("incumbent"))),
+                             white, college, medhhinc, majmatch, dist_white, dist_college, contains("incumbent"))),
   excl_district = names(select(voterfile, Race, agegroup, Sex, 
                g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
                white, college, medhhinc , majmatch)),
   excl_tract = names(select(voterfile, Race, agegroup, Sex, 
                             g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
-                            white_pct, college_pct)),
+                            dist_white, dist_college)),
   only_exact = names(select(voterfile, Race, agegroup, Sex, 
                             g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008))
 )

@@ -156,8 +156,9 @@ voterfile <- voterfile %>%
   ungroup()
 gc()
 
+
 ### Including census data ### ----------------------------------------------------------------------------------------------------------------------------
-# source("censustables.R")
+# loading extended voterfile with more complete tract info
 voterfile_sf <- readRDS("data/cleaned_R_results/voters_census.rds")
 voterfile_sf <- rename(voterfile_sf, 
                        CensusTractUpdate = "CensusTract",
@@ -166,7 +167,7 @@ voterfile_sf <- rename(voterfile_sf,
 voterfile <- left_join(voterfile, voterfile_sf, by = "VANID")
 rm(voterfile_sf)
 
-## Combine spatial pieces
+## Combine spatial pieces in order to join with census tracts
 voterfile <- voterfile %>% filter(County %in% c("BRONX", "KINGS", "NEW YORK", "QUEENS", "RICHMOND")) %>% 
   mutate(countycode = recode(County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085"),
          CensusTract = str_pad(CensusTract, 6, "left", "0"))
@@ -175,10 +176,13 @@ voterfile <- voterfile %>%
          tractcode = coalesce(CensusTractUpdate, CensusTract)) %>% 
   mutate(tract = paste0(countycode, tractcode))  
 
-rm(voterfile_sf)
+
 gc()
 
-load("census.Rdata")
+# source("censustables.R") - this script actually pulls the census data down
+# here's one I made earlier (census data pull)
+load("data/cleaned_R_results/census.Rdata")
+
 
 voterfile <- voterfile %>% 
   left_join(educ) %>%
@@ -199,7 +203,7 @@ names(vf_compet) <- paste0("comp_", names(vf_compet))
 
 voterfile <- vf_compet %>% 
   rename(VANID = "comp_VANID") %>% 
-  select(-matches("2009_general|2010_primary|2013_general|2013_primary|2017_general|2014_pp")) %>%
+  select(-matches("2009_general|2010_primary|2013_general|2013_primary|2017_general|2014_pp")) %>% # droping years with very little variation
   left_join(voterfile, ., by = "VANID")
 
 voterfile <- voterfile %>% 
@@ -211,11 +215,25 @@ rm(vf_compet)
 
 district_covar <- readRDS("data/cleaned_R_results/council_districts.rds")
 district_covar <- district_covar %>% 
-  rename(NYCCD = district)
+  rename(NYCCD = district,
+         dist_white = white_pct, 
+         dist_age18 = age18_pct,
+         dist_college = college_pct,
+         dist_medhhinc = medhhinc)
 
 voterfile <- district_covar %>% 
-  select(NYCCD, white_pct, college_pct, incumbent_2017) %>% 
+  # select(NYCCD, dist_white, dist_college, incumbent_2017) %>% 
   left_join(voterfile, ., by = "NYCCD")
+
+# # Note, not great common support, what to do?
+# voterfile %>% 
+#   select(pb,starts_with("incumbent"), starts_with("competitive")) %>% 
+#   group_by(pb) %>% 
+#   summarize_all(~sum(.)/n()) %>% 
+#   gather("variable", "prop_true", -pb) %>% 
+#   spread(key = "pb", "prop_true")
+voterfile <- voterfile %>% 
+  select(-starts_with("competitive"), -incumbent_2009, -incumbent_2013, -dist_medhhinc, -dist_age18) #to get back to limited controls in earlier match
 
 voterfile <- voterfile %>% 
   mutate(agegroup = cut(age, breaks = c(0, 20, 30, 40, 50, 60,70,80,Inf)))
