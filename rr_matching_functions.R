@@ -72,11 +72,33 @@ custom_cem <- function(df, fields, cutpoints, grouping, outfile = NULL) {
   ### Creating the pairwise k2k match including one random sampled control for every pb voter  --------------------------------------------------------------------------------
   c.match <- data.frame(VANID = df$VANID, pb = df$pb, cem_group = c.out$strata, race =df$Race)
   
+  
+  
   c.match <- c.match %>% 
     group_by(cem_group) %>% 
     mutate(n_treat = sum(pb),
            n_control = sum(pb==0)) %>% 
     filter(n_treat > 0 & n_control > 0)
+  
+  # option to cut sample size for very large comparisons (i.e. placebo model)
+  if (sum(c.match$pb) > 50000){
+    #randomly sample up to 50000 treatment records
+    rand_treat <- c.match %>% 
+      filter(pb == 1) %>% 
+      ungroup() %>% 
+      sample_frac(1) %>% #shuffle
+      slice(1:50000) #take top 50000 
+    
+    # filter c.match to only records with a CEM group in that random selection
+    # and recalculate the n_treat and n_control
+    c.match <- c.match %>% 
+      filter(cem_group %in%rand_treat$cem_group) %>% 
+      group_by(cem_group) %>% 
+      mutate(n_treat = sum(pb),
+             n_control = sum(pb==0)) %>% 
+      filter(n_treat > 0 & n_control > 0)
+  }
+  
   
   c.treat <- c.match %>% filter(pb == 1 & n_control > 0)
   
