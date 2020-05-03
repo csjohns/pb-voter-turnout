@@ -26,7 +26,7 @@ library(cem)
 
 # source("rr_vf_processing.R")
 
-suffix <- "_placebo"
+suffix <- "_within_dist"
 voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching", suffix, ".rds"))
 
 #### Implementing Matching, starting with exact ###-----------------------------------------------------------------------------------------------------------------------------------------------  # 
@@ -35,12 +35,12 @@ voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching", suf
 # source("rr_exact_match.R")
 
 ### Creating matching dataframe based on the potential matches from m.exact --------------------------------------------------------------------------------
-matchable_vans <- readRDS("data/cleaned_R_results/matchablevans.rds")
+matchable_vans <- readRDS(paste0("data/cleaned_R_results/matchablevans", suffix, ".rds"))
 
 matching_df <- voterfile %>%
   filter(VANID %in% matchable_vans) %>% 
-  mutate_at(vars(starts_with("comp")), replace_na, 1) %>% 
-  mutate(agegroup = cut(age, breaks = c(0, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60,65, 70,75, 80,85, 90, Inf))) 
+  mutate_at(vars(starts_with("comp")), replace_na, NA) %>% 
+  mutate(agegroup = cut(age, breaks = c(0, 18.5, 25.5, 39.5, 49.5, 59.5, 69.5, 79.5, Inf))) 
 
 ### create match model parameters
 source("rr_matching_levels.R")
