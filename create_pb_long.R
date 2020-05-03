@@ -6,7 +6,8 @@ create_pb_long <- function(analysis_df){
     mutate(DoB = ymd(DoB),
            totpb = sum(pb_2012, pb_2013, pb_2014, pb_2015 , pb_2016, na.rm = T)
     ) %>% 
-    dplyr::select(-pp_2012, -p_2011)
+    dplyr::select(-pp_2012, -p_2011) %>% 
+    ungroup()
   
   
   ### Reshaping long for regression -------------------------------------------------------------------------------------------------------------------------
@@ -24,7 +25,7 @@ create_pb_long <- function(analysis_df){
            pb = as.numeric(pb)) %>% 
     full_join(filter(elec_long, pb == 1) %>% dplyr::select(VANID, year, totpb) %>% distinct())
 
-  # this code calculates pb start year - not that this code is good even though 2014 is a wacky error year since voters who didn't vote before 2014 will indeed have their start year be 2014
+  # this code calculates pb start year - note that this code is good even though 2014 is a wacky error year since voters who didn't vote before 2014 will indeed have their start year be 2014
   pb_long <- pb_long %>% group_by(VANID) %>%
     arrange(VANID, year) %>%
     mutate(pbyear  = ifelse(pb == 1, year, NA),

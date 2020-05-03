@@ -60,9 +60,8 @@ preprocess_lmer <- function(match_res, model_form) {
   ## process analysis df to pb_long df for analysis (creating wide pb table along the way)
   df <- make_analysis_vf(match_res, voterfile)
   df <- create_pb_long(df) %>% 
-    group_by() %>% 
+    ungroup() %>% 
     attach_competition()
-  df <- create_model_data(df, model_form)
   df
 }
 
@@ -124,6 +123,10 @@ vf_compet <- vf_compet %>%
   ungroup()
   
 
+## create pb_longs
+allout <- allout %>% 
+  mutate(pblong = map(outdf, preprocess_lmer))
+
 ### Define model formulas
 formula_df <- tibble(model_name = c("logit_minimal_form",
                                     "logit_demog_form",
@@ -140,12 +143,11 @@ formula_df <- tibble(model_name = c("logit_minimal_form",
 allout <- expand_grid(allout, formula_df)
 ### Preprocess in list-columns --------------------------------------------------------------------------------------------
 
-
 allout <- allout %>% 
-  # slice(18) %>%
-  mutate(pblong = pmap(.l = list(match_res = outdf, 
+  # slice(1:5) %>%
+  mutate(pblong = pmap(.l = list(df = pblong, 
                                  model_form = model_formula),
-                       .f = preprocess_lmer)) 
+                       .f = create_model_data) )
 
 progbar <- progress_estimated(nrow(allout))
 allout <- allout %>% 
