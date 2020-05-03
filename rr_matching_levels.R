@@ -15,43 +15,15 @@
 
 library(purrr)
 
-matching_models <- tibble(match_type = c("All vars, fine", "All vars, coarse", "Excl compet", "Excl district", "Excl tract", "Only Exact"),
-                          matching_fields = vector("list", 6),
-                          cutpoints = vector("list", 6),
-                          grouping = vector("list", 6))
+match_names <- c("All vars, fine", "All vars, coarse", "Excl compet", "Excl district", "Excl comp+dist", "Excl tract", "Only Exact")
+matching_models <- tibble(match_type = match_names,
+                          matching_fields = vector("list", length(match_names)),
+                          cutpoints = vector("list", length(match_names)),
+                          grouping = vector("list", length(match_names)))
 
-fine_cuts <- list(
-  white = quantile(matching_df$white, c(0,.2,.4,.6,.8,1), na.rm = T),
-  college = quantile(matching_df$college, c(0,.5,1), na.rm = T),
-  medhhinc = quantile(matching_df$medhhinc, c(0,.2,.4,.6,.8,1), na.rm = T)
-  , dist_white = c(0, 0.19836858, 0.49529454 , 1)
-  , dist_college = c(0,0.21320295, 0.37701862, 1 )
-  , comp_2008_primary = quantile(matching_df$comp_2008_primary, c(0, 0.5, 1), na.rm = T)
-  , comp_2009_primary = quantile(matching_df$comp_2009_primary, c(0, 0.5, 1), na.rm = T)
-  , comp_2010_general = quantile(matching_df$comp_2010_general, c(0, 0.5, 1), na.rm = T)
-  , comp_2012_primary = quantile(matching_df$comp_2012_primary, c(0, 0.5, 1), na.rm = T)
-  , comp_2014_general = quantile(matching_df$comp_2014_general, c(0, 0.5, 1), na.rm = T)
-  , comp_2014_primary = quantile(matching_df$comp_2014_primary, c(0, 0.5, 1), na.rm = T)
-  , comp_2016_primary = quantile(matching_df$comp_2016_primary, c(0, 0.5, 1), na.rm = T)
-  , comp_2017_primary = quantile(matching_df$comp_2017_primary, c(0, 0.5, 1), na.rm = T)
-)
 
-coarse_cuts <- list(
-  white = quantile(matching_df$white, c(0, 0.5, 1), na.rm = T),
-  college = quantile(matching_df$college, c(0,.5,1), na.rm = T),
-  medhhinc = quantile(matching_df$medhhinc, c(0,.5,1), na.rm = T)
-  , dist_white = quantile(matching_df$dist_white, c(0,.5,1), na.rm = T)
-  , dist_college = quantile(matching_df$dist_college, c(0,.5,1), na.rm = T)
-  , comp_2008_primary = quantile(matching_df$comp_2008_primary, c(0, 0.5, 1), na.rm = T)
-  , comp_2009_primary = quantile(matching_df$comp_2009_primary, c(0, 0.5, 1), na.rm = T)
-  , comp_2010_general = quantile(matching_df$comp_2010_general, c(0, 0.5, 1), na.rm = T)
-  , comp_2012_primary = quantile(matching_df$comp_2012_primary, c(0, 0.5, 1), na.rm = T)
-  , comp_2014_general = quantile(matching_df$comp_2014_general, c(0, 0.5, 1), na.rm = T)
-  , comp_2014_primary = quantile(matching_df$comp_2014_primary, c(0, 0.5, 1), na.rm = T)
-  , comp_2016_primary = quantile(matching_df$comp_2016_primary, c(0, 0.5, 1), na.rm = T)
-  , comp_2017_primary = quantile(matching_df$comp_2017_primary, c(0, 0.5, 1), na.rm = T)
-)
-
+## load threshold lists (runn against full voterfile - generated in )
+load("data/cleaned_R_results/cutpoints.Rdata")
 
 fine_group <- list(
   g_early = list("0",c("1","2", "3"), c("4", "5", "6"), c("7", "8")), 

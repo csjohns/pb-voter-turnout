@@ -82,7 +82,7 @@ extractGroupBal <- function(cv, tt = "inmatch",  group, df){
   print(names(df))
   bt <- bal.tab(cv, treat = tt, data = df)
   bt$Balance %>% 
-    dplyr::select(M.0.Un, M.1.Un, Diff.Un, M.0.Adj, M.1.Adj, Diff.Adj) %>% 
+    dplyr::select(Diff.Un) %>% #M.0.Un, M.1.Un, Diff.Un, M.0.Adj, M.1.Adj, Diff.Adj) %>% 
     tibble::rownames_to_column("variable")
 }
 all_pb %>% filter(Race == "H") %>% 
@@ -93,9 +93,10 @@ cbtout_byrace <- dplyr::select(all_pb, -VANID, -NYCCD, -pb) %>%
   mutate(Sex = as.factor(Sex),
          Race = as.factor(Race)) %>% 
   group_by(Race) %>% 
-  do(extractGroupBal(cv = ., tt = "inmatch", group = "Race", df = .))
+  do(extractGroupBal(cv = ., tt = "inmatch", group = "Race", df = .)) 
 
-ggplot(cbtout_byrace) + geom_point(aes(x = Diff.Un, y = variable, color = Race))# + facet_wrap(~Race)
+ggplot(cbtout_byrace, aes(x = Diff.Un, y = variable, color = Race)) + geom_point() +
+  geom_segment(aes())# + facet_wrap(~Race)
 
 all_pb %>% 
   ggplot() + geom_bar(aes(x = g_early, fill = as.factor(inmatch)), position = "dodge") + facet_wrap(~Race)
@@ -152,33 +153,33 @@ bal.plot(dplyr::select(all_pb,  -VANID, -NYCCD, -pb, -inmatch), treat = "inmatch
 
 
 #### Looking at pb vs non-PB post  matching:------------------------------------------------------------------
-vf_matched <- c.college %>% dplyr::select(-n_treat, -n_control) %>% 
+vf_matched <- c.college %>% #dplyr::select(-n_treat, -n_control) %>% 
   # mutate(insample = 1) %>% 
   left_join(voterfile) %>%
   group_by() %>% 
   # mutate(insample = replace_na(insample, 0)) %>% 
   group_by() %>% 
-  rename(comp_g_2016 = g_2016_comp, comp_g_2014 = g_2014_comp, comp_p_2014 = p_2014_comp, comp_pp_2016 = pp_2016_comp) %>% 
-  dplyr::select(-DoR, -Ethnicity, -ED, -County, -countycode, -tract, -City, -State, 
-                -CensusTract, -RegStatus, -starts_with("pb_2"), -Zip, -CD, -SD, -HD, -DoB,
+  # rename(comp_g_2016 = g_2016_comp, comp_g_2014 = g_2014_comp, comp_p_2014 = p_2014_comp, comp_pp_2016 = pp_2016_comp) %>% 
+  dplyr::select(-cem_group, -pb_match, -agegroup, -DoR, -Ethnicity, -ED, -County, -countycode, -tract, -City, -State, 
+                -CensusTract, -countycodeupdate, -CensusTractUpdate, -tractcode, -RegStatus, -starts_with("pb_2"), -Zip, -CD, -SD, -HD, -DoB,
                 -black, -asian, -pacislander, -latinx, -mixed, -other,
-                -majority, -pbdistrict, -g_2012, -g_2013, -g_2014, -g_2015, -g_2016, -g_2017,  -p_2011,
-                -p_2012, -p_2013, -p_2014, -p_2015, -p_2016, -p_2017, -pp_2012, -pp_2016, -cem_group, -agegroup,
-                -race) %>% 
+                -pbdistrict, -p_2011)%>% 
   dplyr::select(-VANID, -NYCCD) %>% 
   mutate(Sex = as.factor(Sex),
          Race = as.factor(Race)) 
 gc()
 
 system.time(vfout <- bal.tab(vf_matched, treat = "pb",  data = vf_matched))
-bal.plot(vf_matched, "comp_g_2016", treat = "pb", data = vf_matched, mirror = T)
-bal.plot(vf_matched, "comp_g_2014", treat = "pb", data = vf_matched, mirror = T)
-bal.plot(vf_matched, "comp_p_2014", treat = "pb", data = vf_matched, mirror = T)
-bal.plot(vf_matched, "comp_pp_2016", treat = "pb", data = vf_matched, mirror = T)
+bal.plot(vf_matched, "comp_2017_general", treat = "pb", data = vf_matched, mirror = T, na.rm = T)
+bal.plot(vf_matched, "comp_2014_general", treat = "pb", data = vf_matched, mirror = T, na.rm = T)
+bal.plot(vf_matched, "comp_2014_primary", treat = "pb", data = vf_matched, mirror = T, na.rm = T)
+bal.plot(vf_matched, "comp_2013_primary", treat = "pb", data = vf_matched, mirror = T, na.rm = T)
+bal.plot(vf_matched, "comp_2013_general", treat = "pb", data = vf_matched, mirror = T, na.rm = T)
 bal.plot(vf_matched, "high_school", treat = "pb", data = vf_matched, mirror = T)
 bal.plot(vf_matched, "college", treat = "pb", data = vf_matched, mirror = T)
 bal.plot(vf_matched, "medhhinc", treat = "pb", data = vf_matched, mirror = T)
 bal.plot(vf_matched, "latinx", treat = "pb", data = vf_matched, mirror = T)
+bal.plot(vf_matched, "incumbent_2017", treat = "pb", data = vf_matched, mirror =)
 
 love.plot(vfout, threshold = .1, abs = FALSE)     
 
