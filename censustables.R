@@ -15,7 +15,7 @@ tractID <- function(acsdata){
 }
 
 # Population counts
-B03002 <- acs.fetch(endyear = 2016,  geography = geo,
+B03002 <- acs.fetch(endyear = 2015,  geography = geo,
                     table.number = "B03002", col.names = "pretty")
 race <- data.frame(
   tract = tractID(B03002),
@@ -63,7 +63,9 @@ inc <- data.frame(
   stringsAsFactors = FALSE
 )
 
-inc <- inc %>% rename(medhhinc = B19013..Median.Household.Income.in.the.Past.12.Months..in.2015.Inflation.Adjusted.Dollars...Median.household.income.in.the.past.12.months..in.2015.Inflation.adjusted.dollars.)
+inc <- inc %>% 
+  rename(medhhinc = B19013..Median.Household.Income.in.the.Past.12.Months..in.2015.Inflation.Adjusted.Dollars...Median.household.income.in.the.past.12.months..in.2015.Inflation.adjusted.dollars.) %>% 
+  mutate(medhhinc = ifelse(medhhinc < 0, NA, medhhinc))
 
 ##EDUCATION
 
