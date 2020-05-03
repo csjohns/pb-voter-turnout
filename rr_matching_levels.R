@@ -15,7 +15,7 @@
 
 library(purrr)
 
-match_names <- c("All vars, fine", "All vars, coarse", "Excl compet", "Excl district", "Excl comp+dist", "Excl tract", "Only Exact")
+match_names <- c("All vars, fine", "All vars, coarse", "Excl compet", "Part district", "Excl district", "Excl comp+dist", "Excl tract", "Only Exact")
 matching_models <- tibble(match_type = match_names,
                           matching_fields = vector("list", length(match_names)),
                           cutpoints = vector("list", length(match_names)),
@@ -37,13 +37,19 @@ coarse_group <-  list(
 varlists <- list(
   allvars = names(select(voterfile, Race, agegroup, Sex, 
                    g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
-                   white, college, medhhinc , majmatch,starts_with("comp"),dist_white, dist_college, contains("incumbent"))),
+                   white, college, medhhinc , majmatch,starts_with("comp"),dist_white, dist_college, dist_medhhinc, dist_age18, contains("incumbent"), contains("jenks"))),
   excl_compet = names(select(voterfile, Race, agegroup, Sex, 
                              g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
-                             white, college, medhhinc, majmatch, dist_white, dist_college, contains("incumbent"))),
+                             white, college, medhhinc, majmatch, dist_white, dist_college, dist_medhhinc, dist_age18, contains("incumbent"), contains("jenks"))),
+  part_district = names(select(voterfile, Race, agegroup, Sex, 
+                               g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
+                               white, college, medhhinc , majmatch, starts_with("comp_"), dist_white, dist_college, incumbent_2013, incumbent_2017)),
   excl_district = names(select(voterfile, Race, agegroup, Sex, 
                g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
-               white, college, medhhinc , majmatch)),
+               white, college, medhhinc , majmatch, starts_with("comp_"))),
+  excl_comp_dist = names(select(voterfile, Race, agegroup, Sex, 
+                                g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
+                                white, college, medhhinc , majmatch)),
   excl_tract = names(select(voterfile, Race, agegroup, Sex, 
                             g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
                             dist_white, dist_college)),
@@ -54,7 +60,9 @@ varlists <- list(
 matching_models$matching_fields <- list(varlists$allvars, 
                                         varlists$allvars, 
                                         varlists$excl_compet,
+                                        varlists$part_district,
                                         varlists$excl_district,
+                                        varlists$excl_comp_dist,
                                         varlists$excl_tract,
                                         varlists$only_exact)
 
@@ -63,7 +71,9 @@ keep_vars <- function(cutlist, name_set) {cutlist[intersect(names(cutlist), varl
 matching_models$cutpoints <- list(fine_cuts,
                                   coarse_cuts,
                                   keep_vars(fine_cuts, "excl_compet"),
+                                  keep_vars(fine_cuts, "part_district"),
                                   keep_vars(fine_cuts, "excl_district"),
+                                  keep_vars(fine_cuts, "excl_comp_dist"),
                                   keep_vars(fine_cuts, "excl_tract"),
                                   keep_vars(fine_cuts, "only_exact"))
 
@@ -71,6 +81,8 @@ matching_models$cutpoints <- list(fine_cuts,
 matching_models$grouping <- list(fine_group,
                                   coarse_group,
                                   keep_vars(fine_group, "excl_compet"),
+                                 keep_vars(fine_group, "part_district"),
                                   keep_vars(fine_group, "excl_district"),
-                                  keep_vars(fine_group, "excl_tract"),
+                                 keep_vars(fine_group, "excl_comp_dist"),
+                                 keep_vars(fine_group, "excl_tract"),
                                   keep_vars(fine_group, "only_exact"))

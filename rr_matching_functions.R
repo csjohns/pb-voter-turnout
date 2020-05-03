@@ -29,6 +29,26 @@
 # 
 # grouping <-  list()
 
+cem_only <- function(df, fields, cutpoints, grouping, outfile = NULL) {
+    res <- vector("list")
+    df <- df %>% 
+      select_at(.vars = c("VANID", "pb", fields)) %>% 
+      drop_na() %>% 
+      select(-VANID) %>% 
+      mutate_at(vars(matches("^p_|^g_|^pp_|Race|Sex|incumbent|jenks")), as.factor)
+    print(names(df))
+    print(paste0("vars exact matching: ", setdiff(names(df), c(names(cutpoints), names(grouping)))))
+    
+    c.out <-cem::cem(treatment = "pb",
+               data = df,
+               cutpoints = cutpoints,
+               grouping = grouping,
+               verbose = 1, 
+               keep.all = TRUE)
+    res$out <- c.out
+    res$df <- df
+    res
+}
 
 custom_cem <- function(df, fields, cutpoints, grouping, outfile = NULL) {
   res <- vector("list")
