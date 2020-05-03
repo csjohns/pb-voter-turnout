@@ -13,12 +13,9 @@
 ##############################################################################################################################
 
 
-
-
 ## recoding vote tallies to a binary voted/not voted indicator
 convLogicVote <- function(x){as.numeric(x != "")}   #function to create binary for any case with any non-empty string
 
-voterfile <- voterfile %>% mutate(pb = replace_na(pb, 0))
 voterfile <- voterfile %>% 
   mutate_at(vars(starts_with("p_")), convLogicVote) %>% 
   mutate_at(vars(starts_with("g_")), convLogicVote) %>% 
@@ -69,10 +66,6 @@ voterfile <- voterfile %>%
 ## Add indicator for if voter's race matches majority race of tract
 voterfile <- voterfile %>% 
   mutate(majmatch = Race == majority)
-
-##7658 PB voters in the voter file
-## 12-2-18 - now getting 7654 in voterfile?? ## 2/29-2019 - now getting 7652 in voterfile?!
-
 
 ### Including competitiveness ---------------------------------------------------------------------------------
 source("rr_compet_cleanup.R")

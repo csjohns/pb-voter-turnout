@@ -141,6 +141,7 @@ voterfile <-  pbnyc %>%
   filter(NYCCD %in% comparedist | pbdistrict == 0) %>% 
   rename(pb = pbdistrict)
 
+voterfile <- voterfile %>% mutate(pb = replace_na(pb, 0))
 ### Downstream processing, adding auxiliary info - pulled out to standardize across different match_specs
 source("rr_vf_aux_processing.R")
 

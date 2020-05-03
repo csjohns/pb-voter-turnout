@@ -9,15 +9,18 @@ random_mode <- function(x) {
 }
 
 replace_na_compet <- function(voterfile, compet_var) {
+  cv <- compet_var
+  print(cv)
   compet_var <- ensym(compet_var)
   voterfile <- voterfile %>% 
     group_by(ED) %>% 
-    mutate(mode_compet := random_mode(!!compet_var)) %>%  # calculate mode for that ED for this column (randomly break ties)
+    mutate(mode_compet = random_mode(!!compet_var)) %>%  # calculate mode for that ED for this column (randomly break ties)
     ungroup() %>% 
     mutate(mode_compet = ifelse(is.na(ED) | ED == "", NA, mode_compet)) %>% # replace all unknown EDs with NA mode
-    mutate(!!compet_var := ifelse(is.na(!!compet_var), mode_compet, !!compet_var)) # replace NA values of column w/the mode
-  
-  voterfile
+    mutate(!!compet_var := if_else(is.na(!!compet_var), mode_compet, !!compet_var)) # replace NA values of column w/the mode
+  # voterfile[[cv]] <- ifelse(is.na(voterfile[[cv]]), voterfile$mode_compet, voterfile[[cv]])
+   
+  select(voterfile, -mode_compet)
 }
 
 comp_structural_na_1 <- function(voterfile, structural_vars = c("comp_2008_primary", "comp_2012_primary", "comp_2016_primary")) {
