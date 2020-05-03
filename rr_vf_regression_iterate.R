@@ -81,7 +81,7 @@ calc_margin_effect <- function(data, model_res){
 
 ### Creating/loading matched datasets
 # source("pub_vf_matching.R")
-suffix <- ""
+suffix <- "_within_dist"
 allout <- readRDS(paste0("data/cleaned_R_results/matching_res", suffix, ".RDS"))
 allout <- allout %>% 
   select(match_type, outdf)
@@ -102,7 +102,7 @@ voterfile <- voterfile %>%
 
 
 ### Load competitiveness ---------------------------------------------------------------------------------
-vf_compet <- readRDS("data/cleaned_R_results/wide_compet.rds") %>% 
+vf_compet <- readRDS("data/cleaned_R_results/wide_compet_clean.rds") %>% 
   filter(VANID %in% uniquevanids)
 
 # load presidential results
@@ -142,7 +142,7 @@ allout <- expand_grid(allout, formula_df)
 
 
 allout <- allout %>% 
-  # slice(1:5) %>% 
+  # slice(18) %>%
   mutate(pblong = pmap(.l = list(match_res = outdf, 
                                  model_form = model_formula),
                        .f = preprocess_lmer)) 

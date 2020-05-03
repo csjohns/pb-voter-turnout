@@ -23,9 +23,9 @@ replace_na_compet <- function(voterfile, compet_var) {
   select(voterfile, -mode_compet)
 }
 
-comp_structural_na_1 <- function(voterfile, structural_vars = c("comp_2008_primary", "comp_2012_primary", "comp_2016_primary")) {
+comp_structural_na_1 <- function(voterfile, structural_vars = c("comp_2008_primary", "comp_2012_primary", "comp_2016_primary", "comp_2014_pp")) {
   voterfile %>% 
-    mutate_at(vars(structural_vars), ~ifelse(!is.na(comp_2009_primary) & is.na(.), -99, .)) 
+    mutate_at(vars(contains(structural_vars)), ~ifelse(!is.na(comp_2009_primary) & is.na(.), -99, .)) 
 }
 
 # voterfile %>%
