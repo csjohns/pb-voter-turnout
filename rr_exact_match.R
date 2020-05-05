@@ -21,7 +21,7 @@ stopifnot(exists("suffix"))
 
 exact_df <- voterfile %>% 
   select(VANID, pb,  Race, agegroup, Sex, g_early, g_2008, g_2009, g_2010, 
-         g_2011, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008) %>% 
+         g_2011, p_early, p_2008, p_2009, p_2010, pp_2008) %>% 
   na.omit()
 
 # votehash: tried and rejected as super hit to performance

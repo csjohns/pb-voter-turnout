@@ -26,13 +26,14 @@ library(cem)
 
 # source("rr_vf_processing.R")
 
-suffix <- "_within_dist"
+suffix <- ""
 voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching", suffix, ".rds"))
 
 #### Implementing Matching, starting with exact ###-----------------------------------------------------------------------------------------------------------------------------------------------  # 
   
 ## Exact matching to narrow field of possibility
 # source("rr_exact_match.R")
+# rm(exact_df)
 
 ### Creating matching dataframe based on the potential matches from m.exact --------------------------------------------------------------------------------
 matchable_vans <- readRDS(paste0("data/cleaned_R_results/matchablevans", suffix, ".rds"))
@@ -46,10 +47,10 @@ matching_df <- voterfile %>%
 source("rr_matching_levels.R")
 source("rr_matching_functions.R")
 
-testout <- custom_cem(df = matching_df,
-                      fields = matching_models$matching_fields[[1]],
-                      cutpoints = matching_models$cutpoints[[1]],
-                      grouping = matching_models$grouping[[1]])
+# testout <- custom_cem(df = matching_df,
+#                       fields = matching_models$matching_fields[[6]],
+#                       cutpoints = matching_models$cutpoints[[6]],
+#                       grouping = matching_models$grouping[[6]])
 
 allout <- matching_models %>% 
   mutate(outdf = pmap(.l = list(fields = matching_fields, 

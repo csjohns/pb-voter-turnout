@@ -37,25 +37,25 @@ coarse_group <-  list(
 
 varlists <- list(
   allvars = names(select(voterfile, Race, agegroup, Sex, 
-                   g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
+                   g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008, 
                    white, college, medhhinc , majmatch,starts_with("comp"),dist_white, dist_college, dist_medhhinc, dist_age18, contains("incumbent"), contains("jenks"))),
   excl_compet = names(select(voterfile, Race, agegroup, Sex, 
-                             g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
+                             g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008, 
                              white, college, medhhinc, majmatch, dist_white, dist_college, dist_medhhinc, dist_age18, contains("incumbent"), contains("jenks"))),
   part_district = names(select(voterfile, Race, agegroup, Sex, 
-                               g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
+                               g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008, 
                                white, college, medhhinc , majmatch, starts_with("comp_"), dist_white, dist_college, incumbent_2013, incumbent_2017)),
   excl_district = names(select(voterfile, Race, agegroup, Sex, 
-               g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
+               g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008, 
                white, college, medhhinc , majmatch, starts_with("comp_"))),
   excl_comp_dist = names(select(voterfile, Race, agegroup, Sex, 
-                                g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
+                                g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008, 
                                 white, college, medhhinc , majmatch)),
   excl_tract = names(select(voterfile, Race, agegroup, Sex, 
-                            g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008, 
+                            g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008, 
                             dist_white, dist_college)),
   only_exact = names(select(voterfile, Race, agegroup, Sex, 
-                            g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2004, pp_2008))
+                            g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008))
 )
 
 matching_models$matching_fields <- list(varlists$allvars, 
