@@ -50,14 +50,14 @@ stringNAs <- function(x){
 
 pb <- readRDS("data/cleaned_R_results/pb.rds")
 # limit to only 23/39 and 2016 districts
-pbnyc <- read.csv(file = "pbnyc_district_votes.csv", as.is = TRUE)
+pbnyc <- read.csv(file = "pbnyc_district_votes.csv", as.is = TRUE) 
 pb2016 <- pbnyc %>% filter(districtCycle == 1 & voteYear == 2016) 
 
 ### Load full voterfile data ### -------------------------------------------------------------------------------------
 ### Limit it to only non-PB districts and VANIDS
 
 pbdistricts <- unique(pbnyc$district)
-rm(pbnyc)
+# rm(pbnyc)
 # 
 # ## loading full voter file
 # con <- dbConnect(MySQL(), username = username, password = password, dbname = db.name, host = hostname, port = port) #establish connection to DB
@@ -79,6 +79,24 @@ rm(pbnyc)
 set.seed(92018)
 # source("vf_gis_nyccdmatch.R")
 source("pb_cleanup_addnyccd_foranalysis.R")
+# filter to full districts or known first voters
+pb <- pb %>% 
+  filter(pbdistrict %in% c(23, 39, pb2016$district) | pb_2012 == 1 |
+           (pb_2013 == 1  & pbdistrict %in% pbnyc_history$pbdistrict[pbnyc_history$start_year==2013]) |
+            (pb_2014 == 1  & pbdistrict %in% pbnyc_history$pbdistrict[pbnyc_history$start_year==2014]) |
+            (pb_2015 == 1  & pbdistrict %in% pbnyc_history$pbdistrict[pbnyc_history$start_year==2015])) ## this is filtering to only districts we have full/near full data for
+
+## impute missing pbdistrict fro 2012 voters
+pb2012 <- read.csv(file = "pbnyc_district_votes.csv", as.is = TRUE) %>% 
+  filter(voteYear == 2012) %>% 
+  select(district, voters) 
+pb2012 <- pb %>% filter(pb_2012 == 1 & !is.na(pbdistrict)) %>% count(pbdistrict) %>% 
+  left_join(pb2012, ., by = c(district = "pbdistrict")) %>% 
+  mutate(pct_missing = (voters-n)/sum(voters-n)) %>% 
+  select(-voters, -n)
+pb$pbdistrict[pb$pb_2012 == 1 & is.na(pb$pbdistrict)] <- sample(c(pb2012$district),
+                                                                size = sum(pb$pb_2012 == 1 & is.na(pb$pbdistrict)), 
+                                                                replace = T, prob=c(pb2012$pct_missing)) 
 
 ## remove districts in pbdistricts
 # voterfile <- voterfile %>% filter(!CityCouncilName %in% pbdistricts & !is.na(CityCouncilName))
@@ -130,10 +148,7 @@ setdiff(names(voterfile), names(pb))
 
 ### Join to voter file ### -------------------------------------------------------------------------------------
 ## this code works by basically appending the voters from the districts of interest to the non-pb voterfile
-
-voterfile <- pb %>% 
-  filter(pbdistrict %in% c(23, 39, pb2016$district) | pb_2012 == 1) %>% ## this is filtering to only districts we have full/near full data for
-  bind_rows(voterfile)
+voterfile <- bind_rows(pb, voterfile)
 
 voterfile <- voterfile %>% mutate(pb = replace_na(pb, 0))
 ### Downstream processing, adding auxiliary info - pulled out to standardize across different match_specs
