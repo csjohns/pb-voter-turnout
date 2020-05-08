@@ -88,7 +88,7 @@ source("pb_cleanup_addnyccd_foranalysis.R")
 
 
 pbdistricts_true <- pb %>% 
-  filter(pbdistrict %in% c(23, 39, pb2016$district) | pb_2012 == 1) %>% ## this is filtering to only districts we have full/near full data for
+  filter(pbdistrict %in% c(23, 39, pb2016$district)) %>% ## this is filtering to only districts we have full/near full data for
   .$pbdistrict %>% 
   na.omit() %>% 
   unique() 
@@ -145,12 +145,17 @@ setdiff(names(voterfile), names(pb))
 ### Limit voterfile to only voters in eligible districts 
 
 voterfile <- pb %>% 
-  filter(pbdistrict %in% c(23, 39, pb2016$district) | pb_2012 == 1) %>% ## this is filtering to only districts we have full/near full data for
+  filter(pbdistrict %in% c(23, 39, pb2016$district)) %>% ## this is filtering to only districts we have full/near full data for
   bind_rows(voterfile)
 
 voterfile <- voterfile %>% mutate(pb = replace_na(pb, 0))
 
 ### Downstream processing, adding auxiliary info - pulled out to standardize across different match_specs
 source("rr_vf_aux_processing.R")
+
+## limiting to effective pb districts
+voterfile <- voterfile %>% 
+  mutate(effective_district = ifelse(pb == 1, pbdistrict, NYCCD)) %>% 
+  filter(effective_district %in% c(23, 39, 30,35,36,40))
 
 saveRDS(voterfile, "data/cleaned_R_results/voterfile_for_matching_within_dist.rds")
