@@ -43,3 +43,15 @@ pb_imputed <- pb_imputed %>%
   rename(pbdistrict = pbdistrict_imputed)
 pb <- pb_imputed
 rm(pb_imputed)
+
+## impute remaining missing pbdistrict for 2012 voters only - using proportional allocation based on unaccounted for voters
+pb2012 <- read.csv(file = "pbnyc_district_votes.csv", as.is = TRUE) %>% 
+  filter(voteYear == 2012) %>% 
+  select(district, voters) 
+pb2012 <- pb %>% filter(pb_2012 == 1 & !is.na(pbdistrict)) %>% count(pbdistrict) %>% 
+  left_join(pb2012, ., by = c(district = "pbdistrict")) %>% 
+  mutate(pct_missing = (voters-n)/sum(voters-n)) %>% 
+  select(-voters, -n)
+pb$pbdistrict[pb$pb_2012 == 1 & is.na(pb$pbdistrict)] <- sample(c(pb2012$district),
+                                                                size = sum(pb$pb_2012 == 1 & is.na(pb$pbdistrict)), 
+                                                                replace = T, prob=c(pb2012$pct_missing)) 
