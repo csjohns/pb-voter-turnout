@@ -5,52 +5,9 @@ library(tidyr)
 library(glue)
 library(lubridate)
 library(stringr)
-library(data.table)
 
-stringNAs <- function(x){
-  ifelse(x, "", NA)
-}
+voterfile <- readRDS("data/cleaned_R_results/voterfile_full_clean.rds")
 
-### Load full voterfile data ### -------------------------------------------------------------------------------------
-
-voterfile <- fread("PersonFile20180426-11056504994/PersonFile20180426-11056504994.txt")
-voterfile <- voterfile[! RegistrationStatusName %in% c('Applicant', 'Dropped', 'Unregistered') & DateReg != ""]
-
-set.seed(92018)
-source("vf_gis_nyccdmatch.R")
-
-### standard voterfile column name processing etc -------------------------------
-voterfile <- voterfile  %>%
-  rename(Ethnicity = EthnicCatalistName,
-         DoB = DOB,
-         DoR = DateReg,
-         RegStatus = RegistrationStatusName,
-         County = CountyName,
-         City = CityName,
-         #Zip = Zip5,
-         Lat = Latitude,
-         Long = Longitude,
-         NYCCD = CityCouncilName,
-         CensusTract = CensusTractName,
-         VANID = `Voter File VANID`,
-         ED = PrecinctName)
-
-voterfile <- voterfile  %>%
-  mutate(County = recode(County, Bronx = "BRONX" , Kings = "KINGS", `New York` = "NEW YORK", Queens = "QUEENS", Richmond = "RICHMOND")) %>% 
-  mutate(DoB = mdy(DoB))
-
-names(voterfile) <- names(voterfile) %>% 
-  str_replace("General", "g_20") %>%
-  str_replace("PresidentialPrimary", "pp_20") %>%
-  str_replace("Primary", "p_20")
-
-voterfile <- voterfile %>%
-  select(-starts_with("Special"), -ends_with("Party")) %>%
-  select(-Lat, -Long, -starts_with("Street"), -starts_with("Apt"), - VHHID, -StateFileID, -DWID, 
-         -starts_with("Reported"), -CounDist)
-
-### Downstream processing, adding auxiliary info - pulled out to standardize across different match_specs -------------
-source("rr_vf_aux_processing.R")
 
 median_excl_99  <-  function(x) {
   median(x[x != -99], na.rm = TRUE)
