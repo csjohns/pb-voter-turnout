@@ -1,5 +1,5 @@
 ##### 
-### Matching PB to non-PB voters
+### Matching PB to non-PB voters - implementing district-level controls
 
 ##############################################################################################################################
 ###
@@ -48,15 +48,17 @@ match_groups <- readRDS("data/cleaned_R_results/district_match_res.rds")
 
 matching_df <-  matching_df %>% 
   mutate(effective_district = ifelse(pb == 1, pbdistrict, NYCCD)) %>% 
-  left_join(match_groups, by = c(NYCCD = effective_district) 
+  left_join(match_groups, by = c(effective_district = "NYCCD") ) %>% 
+  select(-effective_district) %>% 
+  mutate(match_group = replace_na(match_group, 4)) #create a group for the excluded control districts
 ### create match model parameters
 source("rr_matching_levels_dist_revised.R")
 source("rr_matching_functions.R")
 
-testout <- custom_cem(df = matching_df,
-                      fields = matching_models$matching_fields[[11]],
-                      cutpoints = matching_models$cutpoints[[11]],
-                      grouping = matching_models$grouping[[11]])
+# testout <- custom_cem(df = matching_df,
+#                       fields = matching_models$matching_fields[[11]],
+#                       cutpoints = matching_models$cutpoints[[11]],
+#                       grouping = matching_models$grouping[[11]])
 
 allout <- matching_models %>% 
   mutate(outdf = pmap(.l = list(fields = matching_fields, 
