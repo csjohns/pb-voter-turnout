@@ -15,16 +15,23 @@ library(cobalt)
 ### functions and formats ------------
 calc_pb_balance <- function(voterfile = voterfile, matched, fields) {
   df <- voterfile %>% 
-    select(VANID, pb, age, fields) %>% 
+    select(VANID, pb, fields) %>% 
     filter(pb == 1) %>% 
     left_join(., (filter(matched, pb == 1) %>%  select(VANID, cem_group)), by = "VANID")  %>% 
     mutate(inmatch = as.numeric(!is.na(cem_group))) %>% 
     select(-cem_group, -VANID, -pb, -agegroup) %>% 
     drop_na()
     
+  if("Sex" %in% names(df)) {
+    df <- df %>% 
+      mutate(Sex = as.factor(Sex),
+             Race = as.factor(Race))
+  }
+  if("NYCCD" %in% names(df)) {
+    df <- df %>% 
+      mutate(NYCCD = as.factor(NYCCD))
+  }
   out <- df %>% 
-    mutate(Sex = as.factor(Sex),
-           Race = as.factor(Race)) %>% 
     bal.tab(treat = "inmatch", data = df)
   
   out
@@ -32,7 +39,7 @@ calc_pb_balance <- function(voterfile = voterfile, matched, fields) {
 
 calc_control_balance <- function(voterfile = voterfile, matched, fields) {
   df <- voterfile %>% 
-    select(VANID, pb, age, fields) %>% 
+    select(VANID, pb, fields) %>% 
     left_join(., (select(matched, VANID, cem_group)), by = "VANID")  %>% 
     mutate(inmatch = as.numeric(!is.na(cem_group))) %>% 
     select(-cem_group, -VANID, -agegroup) %>% 
@@ -79,7 +86,7 @@ extract_balance_df <- function(tab, label) {
 #   )
 
 ### load data ------------------
-suffix <- ""
+suffix <- "district"
 voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching", suffix, ".rds"))
 allout <- readRDS(paste0("data/cleaned_R_results/matching_res", suffix, ".RDS")) 
 
@@ -117,7 +124,7 @@ plotly::ggplotly(p1)
 
 
 #### balance checking pb/non-pb
-testout <- calc_control_balance(voterfile, allout$outdf[[1]], fields = allout$matching_fields[[1]])
+testout <- calc_pb_balance(voterfile, allout$outdf[[1]], fields = allout$matching_fields[[11]])
 
 love.plot(testout, threshold = .1, abs = FALSE, #var.names = vnames, 
           title = "", line = T, 
@@ -126,7 +133,7 @@ love.plot(testout, threshold = .1, abs = FALSE, #var.names = vnames,
   labs(x = "Mean differences PB-nonPB", color = "", shape = "")
 
 for (i in 1:nrow(allout)) {
-  testout <- calc_control_balance(voterfile, allout$outdf[[i]], fields = allout$matching_fields[[1]])
+  testout <- calc_control_balance(voterfile, allout$outdf[[i]], fields = c(age, allout$matching_fields[[11]]))
   
   p <- love.plot(testout, threshold = .1, abs = FALSE, #var.names = vnames, 
             title = "", line = T, 
@@ -136,6 +143,20 @@ for (i in 1:nrow(allout)) {
          title = allout$match_type[[i]])
   print(p)
 }
+
+for (i in 1:nrow(allout)) {
+  testout <- calc_control_balance(voterfile, allout$outdf[[i]], fields = "NYCCD")
+  
+  p <- love.plot(testout, threshold = .1, abs = FALSE, #var.names = vnames, 
+                 title = "", line = T, 
+                 sample.names = c("Before Matching", "After Matching")) +
+    theme(legend.position = "bottom") +
+    labs(x = "Mean differences PB-nonPB", color = "", shape = "",
+         title = allout$match_type[[i]])
+  print(p)
+}
+
+
 
 
 ### comparing match patterns among specific demographics of pb voters: ------------------------------------------------------

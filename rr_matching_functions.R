@@ -60,7 +60,7 @@ custom_cem <- function(df, fields, cutpoints, grouping, outfile = NULL) {
   
   c.out <- df %>% 
     select(-VANID) %>% 
-    mutate_at(vars(matches("^p_|^g_|^pp_|Race|Sex|incumbent|jenks")), as.factor) %>%
+    # mutate_at(vars(matches("^p_|^g_|^pp_|Race|Sex|incumbent|jenks")), as.factor) %>%
     cem::cem(treatment = "pb",
              data = .,
              cutpoints = cutpoints,
@@ -120,8 +120,9 @@ custom_cem <- function(df, fields, cutpoints, grouping, outfile = NULL) {
     bind_rows(c.control)
   
   res$df <- c.match %>% 
-    dplyr::select(-n_treat, -n_control) %>% 
-    left_join(df)
+    dplyr::select(VANID, cem_group, pb) %>% 
+    ungroup()
+  
 if (!is.null(outfile)) {saveRDS(res, file = outfile)}
   res$df
 }
