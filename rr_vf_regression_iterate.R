@@ -80,7 +80,7 @@ calc_margin_effect <- function(data, model_res){
 
 ### Creating/loading matched datasets
 # source("pub_vf_matching.R")
-suffix <- "_within_dist"
+suffix <- ""
 allout <- readRDS(paste0("data/cleaned_R_results/matching_res", suffix, ".RDS"))
 allout <- allout %>% 
   select(match_type, outdf)
@@ -109,6 +109,7 @@ source("BOE_pres_process.R")
 
 ## attach pres, make long w/election & year
 vf_compet <- vf_compet %>% 
+  rename_all(~str_remove(., "comp_")) %>% 
   attach_pres(pres_wide) 
 
 names(vf_compet) <- str_replace(names(vf_compet), "general", "g")
@@ -119,9 +120,12 @@ vf_compet <- vf_compet %>%
   separate(election, c("year", "election_type")) %>% 
   mutate(year = as.numeric(year)) %>% 
   group_by(year, election_type) %>% 
-  mutate(compet = replace_na(compet, mean(compet))) %>% 
+  mutate(compet = replace_na(compet, mean(compet[compet >0], na.rm = T))) %>% 
   ungroup()
   
+# replace years where that person have an election w/NA
+vf_compet <- vf_compet %>% 
+  mutate(compet = na_if(compet, "-99"))
 
 ## create pb_longs
 allout <- allout %>% 
@@ -151,32 +155,55 @@ allout <- allout %>%
 
 progbar <- progress_estimated(nrow(allout))
 allout <- allout %>% 
+  # slice(18) %>%
   mutate(result = pmap(.l = list(df = pblong,
                                  model_form = model_formula),
                        .f = fit_lmer_model))
 
 allout  %>% mutate(AIC = map_dbl(result, AIC), BIC = map_dbl(result, BIC)) %>% select(match_type, model_name, AIC, BIC) %>%  arrange(match_type, AIC) %>% View()
 glimpse(allout)
-allout <- allout %>% 
-  mutate(tidyresult = map(result, broom::tidy, conf.int = TRUE),
-         AIC = map_dbl(result, AIC),
-         BIC = map_dbl(result, BIC))
+
 allout %>% select(match_type, model_name, pblong, result) %>% 
   saveRDS(paste0("data/cleaned_R_results/iter_regress_check", suffix, ".rds"))
 
 allout <- readRDS(paste0("data/cleaned_R_results/iter_regress_check", suffix, ".rds"))
+
+allout <- allout %>% 
+  mutate(tidyresult = map(result, broom::tidy, conf.int = TRUE),
+         AIC = map_dbl(result, AIC),
+         BIC = map_dbl(result, BIC), 
+         nvoter = map_dbl(pblong, ~n_distinct(.$VANID))) 
+
+allout <- mutate(allout, match_label = paste0(match_type, ": ", nvoter))
+
 lmers <- allout %>%  
-  select(match_type, model_name, tidyresult) %>% 
-  unnest(cols = tidyresult)
+  select(match_type = match_label, model_name, tidyresult) %>% 
+  unnest(cols = tidyresult) %>% 
+  group_by(match_type, model_name) %>% 
+  mutate(pb_effect = estimate[term == "after_pb"])
 
 robust <- lmers %>% 
-  filter(group == "fixed" & term != "I(age_at_vote < 18)TRUE" & !str_detect(term, "year") & term != "(Intercept)") %>% 
-  ggplot(aes(x = term, y = estimate, ymin = conf.low, ymax = conf.high, color = match_type)) +
-    geom_pointrange() +
-    geom_point() +
+  filter(group == "fixed" & term != "I(age_at_vote < 18)TRUE" & !str_detect(term, "year") & term != "(Intercept)" & term != "RaceU") %>% 
+  ggplot(aes(x = term, y = estimate, ymin = conf.low, ymax = conf.high, color = forcats::fct_reorder(match_type, pb_effect, .desc = TRUE))) +
+    geom_pointrange(position = position_dodge(width = .2)) +
+    geom_point(position = position_dodge(width =.2 )) +
     geom_hline(aes(yintercept = 0)) +
     facet_wrap(~model_name) +
     # ylim(-5, 5) +
     coord_flip()
 robust
-library(plotly)
+plotly::ggplotly(robust)
+
+## checking council district distribution across matches
+distabs <- allout %>% 
+  filter(match_type %in% c("All vars, fine", "All vars, coarse", "Dist medhhinc", "Excl comp + dist", "Excl compet", "Excl district")) %>% 
+  group_by(match_type) %>% slice(1) %>% ungroup %>% 
+  transmute(disttabs = map(pblong,~select(., VANID, NYCCD) %>% distinct() %>% count(NYCCD) %>% arrange(desc(n))),
+            nvoter = nvoter,
+            match_type = match_type) 
+full_join(distabs$disttabs[[1]] %>% rename(n_coarse = n),distabs$disttabs[[2]] %>% rename(n_fine = n)) %>% 
+  full_join(distabs$disttabs[[3]] %>% rename(n_medhhinc = n)) %>% 
+  full_join(distabs$disttabs[[4]] %>% rename(n_excl = n)) %>% 
+  full_join(distabs$disttabs[[5]] %>% rename(n_exclcomp = n)) %>% 
+  full_join(distabs$disttabs[[6]] %>% rename(n_excldist = n)) %>% 
+  mutate_at(vars(starts_with("n_")), ~./sum(., na.rm = T)) %>% View()
