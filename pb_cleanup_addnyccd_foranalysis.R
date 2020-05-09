@@ -55,3 +55,4 @@ pb2012 <- pb %>% filter(pb_2012 == 1 & !is.na(pbdistrict)) %>% count(pbdistrict)
 pb$pbdistrict[pb$pb_2012 == 1 & is.na(pb$pbdistrict)] <- sample(c(pb2012$district),
                                                                 size = sum(pb$pb_2012 == 1 & is.na(pb$pbdistrict)), 
                                                                 replace = T, prob=c(pb2012$pct_missing)) 
+rm(pb2012)

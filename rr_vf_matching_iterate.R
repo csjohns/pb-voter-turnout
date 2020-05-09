@@ -1,5 +1,5 @@
 ##### 
-### Matching PB to non-PB voters
+### Matching PB to non-PB voters - implementing district-level controls
 
 ##############################################################################################################################
 ###
@@ -41,16 +41,17 @@ matchable_vans <- readRDS(paste0("data/cleaned_R_results/matchablevans", suffix,
 matching_df <- voterfile %>%
   filter(VANID %in% matchable_vans) %>% 
   mutate_at(vars(starts_with("comp")), replace_na, NA) %>% 
-  mutate(agegroup = cut(age, breaks = c(0, 18.5, 25.5, 39.5, 49.5, 59.5, 69.5, 79.5, Inf))) 
+  mutate(agegroup = cut(age, breaks = c(0, 18.5, 25.5, 39.5, 49.5, 59.5, 69.5, 79.5, Inf))) %>% 
+  mutate_at(vars(matches("^p_|^g_|^pp_|Race|Sex|incumbent|jenks")), as.factor)
 
 ### create match model parameters
-source("rr_matching_levels.R")
+source(paste0("rr_matching_levels", suffix, ".R"))
 source("rr_matching_functions.R")
 
 # testout <- custom_cem(df = matching_df,
-#                       fields = matching_models$matching_fields[[6]],
-#                       cutpoints = matching_models$cutpoints[[6]],
-#                       grouping = matching_models$grouping[[6]])
+#                       fields = matching_models$matching_fields[[11]],
+#                       cutpoints = matching_models$cutpoints[[11]],
+#                       grouping = matching_models$grouping[[11]])
 
 allout <- matching_models %>% 
   mutate(outdf = pmap(.l = list(fields = matching_fields, 
@@ -64,19 +65,3 @@ allout <- matching_models %>%
 ## save matching results to disc
 saveRDS(allout, file = paste0("data/cleaned_R_results/matching_res", suffix, ".RDS"))
 
-### creating analysis DF by joining voterfile to the CEM match output - effectively returns voterfile info filtered to matched dataset -----
-# vf_analysis <- make_analysis_vf(allout$outdf[1], voterfile)
-
-### Match balance checking ------------------------------------------------------------------------------------------------
-# select preferred match result
-
-
-
-
-# run balance checks for publication
-# source("pub_balance_checking.R")
-
-
-
-
-    

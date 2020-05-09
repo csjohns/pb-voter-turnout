@@ -25,7 +25,7 @@ pres <- pres %>%
 pres_wide <- pres %>% 
   select(-ends_with("votes")) %>% 
   unite(election, year, election) %>% 
-  # mutate(election = paste0("comp_", election)) %>% 
+  mutate(election = paste0("comp_", election)) %>%
   filter(!is.na(margin)) %>% 
   spread(key = election, value = margin) 
 

@@ -80,7 +80,7 @@ rm(pbnyc)
 ### Limit it to only non-PB districts and VANIDS
 
 voterfile <- fread("PersonFile20180426-11056504994/PersonFile20180426-11056504994.txt")
-voterfile <- voterfile[CityCouncilName %in% pbdistricts & RegistrationStatusName %in% c('Applicant', 'Dropped', 'Unregistered') & DateReg != ""]
+voterfile <- voterfile[CityCouncilName %in% pbdistricts & !RegistrationStatusName %in% c('Applicant', 'Dropped', 'Unregistered') & DateReg != ""]
 
 set.seed(92018)
 source("vf_gis_nyccdmatch.R")
