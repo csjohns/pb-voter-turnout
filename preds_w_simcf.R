@@ -7,9 +7,32 @@ library(lubridate)
 library(stringr)
 library(lme4)
 
+
 rm(lme_age2, lme_elig, lme_full, lme_full_ncollege, lme_lmed, lme_logit, lme_med2, lme_nosex, lme_nowhite, covar_lm, covar_logit)
 
 ##### Predictions with SIMCF
+source("create_pb_long.R")
+limit_outdf <- function(df) {
+  df %>% 
+    ungroup() %>% 
+    select(VANID, cem_group)
+}
+make_analysis_vf <- function(match_res, vf) {
+  match_res %>% 
+    ungroup() %>% 
+    select(VANID, cem_group) %>% 
+    distinct() %>% 
+    left_join(vf)
+}
+
+
+attach_competition <- function(df) {# note requires vf_compet to be loaded
+  df %>% 
+    left_join(vf_compet)
+}
+
+
+
 makeFEdummies <- function (unit, names = NULL) {
   fe <- model.matrix(~factor(unit, levels = unique(as.character(unit))) - 1)
   if (is.null(names)) {
@@ -27,9 +50,59 @@ makeFEdummies <- function (unit, names = NULL) {
 ## setting up pb_long from vf_analysis again
 
 ## process analysis df to pb_long df for analysis (creating wide pb table along the way)
-load("vf_analysis.Rdata")
-source("create_pb_long.R")
-pb_long <- create_pb_long(vf_analysis)
+allout <- readRDS("data/cleaned_R_results/matching_resdistrict.RDS")
+# allout <- allout %>% filter(match_type %in% c("All vars, fine", "All vars, coarse", "Excl district", "Excl comp + dist"))
+allout$match_type
+
+uniquevanids <- sapply(allout$outdf, function(x){unique(x$VANID)}) %>% unlist() %>% unique() 
+
+# Load and process voterfile - attaching full competitiveness measures
+voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching.rds"))
+# remove previously attached partial competitiveness records
+voterfile <- voterfile %>% 
+  filter(VANID %in% uniquevanids) %>% 
+  select(-starts_with("comp_"), -pp_2016)
+
+
+### Load competitiveness ---------------------------------------------------------------------------------
+vf_compet <- readRDS("data/cleaned_R_results/wide_compet_clean.rds") %>% 
+  filter(VANID %in% uniquevanids)
+
+# load presidential results
+source("BOE_pres_process.R")
+
+## attach pres, make long w/election & year
+vf_compet <- vf_compet %>% 
+  rename_all(~str_remove(., "comp_")) %>% 
+  attach_pres(pres_wide) 
+
+names(vf_compet) <- str_replace(names(vf_compet), "general", "g")
+names(vf_compet) <- str_replace(names(vf_compet), "primary", "p")
+
+vf_compet <- vf_compet %>% 
+  gather(key = election, value = compet, -VANID) %>% 
+  separate(election, c("year", "election_type")) %>% 
+  mutate(year = as.numeric(year)) %>% 
+  group_by(year, election_type) %>% 
+  mutate(compet = replace_na(compet, mean(compet[compet >0], na.rm = T))) %>% 
+  ungroup()
+
+# replace years where that person have an election w/NA
+# vf_compet <- vf_compet %>% 
+#   mutate(compet = na_if(compet, "-99"))
+
+path <- "Paper/Temp_figs/exclcomp_dist_"
+i <- 11
+
+pb_long <- allout$outdf[[i]] %>% 
+  make_analysis_vf(vf = voterfile) %>% 
+  create_pb_long() %>% 
+  ungroup() %>% 
+  attach_competition() %>% 
+  filter(!year %in% c(2011, 2015) & compet != "-99") %>% 
+  mutate(compet = na_if(compet, "-99"))
+  
+  
 
 pb_long_orig <- pb_long # making a copy in case all is f'ed up and don't want to rerun all processing code
 
@@ -46,15 +119,15 @@ pb_long <- bind_cols(pb_long, as.data.frame(raceFE), as.data.frame(yearFE), as.d
 ################################################################################################################################################
 ######################## AGGREGATE MODEL ------------------------------------------------------------------------------------
 ### Estimated model
-logit_base_simcf <- turned_out ~ pb + after_pb + election_p + election_pp +
-  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+logit_base_simcf <- turned_out ~ pb + after_pb + compet + election_p + election_pp +
+  year_2009 + year_2010 + year_2012 + year_2013 + year_2014 + year_2016 + year_2017 +
   race_B + race_A + race_H + race_U + Female + age + I(age^2) + I(age_at_vote < 18) + 
   medhhinc_10k + college_pct + majmatch + (1 | VANID) + (1 | NYCCD)
 lme_base_simcf <- glmer(logit_base_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 #######################################################################################################################################
 ### Formula for simcf
-logit_base_form <-  turned_out ~ pb + after_pb + election_p + election_pp +
-  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+logit_base_form <-  turned_out ~ pb + after_pb + compet + election_p+ election_pp +
+  year_2009 + year_2010  + year_2012 + year_2013 + year_2014 +  year_2016 + year_2017 +
   race_B + race_A + race_H + race_U + Female + age + I(age^2) + I(age_at_vote < 18) + 
   medhhinc_10k + college_pct + majmatch
 
@@ -76,11 +149,11 @@ xhyp <- cfMake(logit_base_form, pb_long, nscen = nscen, f = "mean")
 for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2009", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2010", x = 0, xpre = 0, scen = i)
-  xhyp <- cfChange(xhyp, "year_2011", x = 0, xpre = 0, scen = i)
+  # xhyp <- cfChange(xhyp, "year_2011", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2012", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2013", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2014", x = 0, xpre = 0, scen = i)
-  xhyp <- cfChange(xhyp, "year_2015", x = 0, xpre = 0, scen = i)
+  # xhyp <- cfChange(xhyp, "year_2015", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2016", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2017", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "election_pp", x = 0, xpre = 0, scen = i)
@@ -139,23 +212,23 @@ preds %>%
   # coord_flip() +
   theme_minimal() +
   theme(axis.title=element_text(size=11))
-ggsave("Paper_text/Figs/base_by_year.pdf", width = 6, height = 4)
+ggsave(paste0(path, "base_by_year.pdf"), width = 6, height = 4)
 #ggsave("Paper/Figs/base_by_year.png", width = 6, height = 5)
 
 
 ################################################################################################################################################
 ######################## DISAGGREGATE BY RACE ------------------------------------------------------------------------------------
 ### Estimated model
-logit_race_simcf <- turned_out ~ pb + after_pb + election_p + election_pp +
-  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+logit_race_simcf <- turned_out ~ pb + after_pb + compet + election_p + election_pp +
+  year_2009 + year_2010  + year_2012 + year_2013 + year_2014 + year_2016 + year_2017 +
   after_pb*race_B + after_pb*race_A + after_pb*race_H + after_pb*race_U +
   year_2009*race_B + year_2009*race_A + year_2009*race_H + year_2009*race_U +
   year_2010*race_B + year_2010*race_A + year_2010*race_H + year_2010*race_U +
-  year_2011*race_B + year_2011*race_A + year_2011*race_H + year_2011*race_U +
+  # year_2011*race_B *race_A *race_H *race_U +
   year_2012*race_B + year_2012*race_A + year_2012*race_H + year_2012*race_U +
   year_2013*race_B + year_2013*race_A + year_2013*race_H + year_2013*race_U +
   year_2014*race_B + year_2014*race_A + year_2014*race_H + year_2014*race_U +
-  year_2015*race_B + year_2015*race_A + year_2015*race_H + year_2015*race_U +
+  # year_2015*race_B + year_2015*race_A + year_2015*race_H + year_2015*race_U +
   year_2016*race_B + year_2016*race_A + year_2016*race_H + year_2016*race_U +
   year_2017*race_B + year_2017*race_A + year_2017*race_H + year_2017*race_U +
   Female + age + I(age^2) + I(age_at_vote < 18) + 
@@ -165,16 +238,15 @@ lme_race_simcf <- glmer(logit_race_simcf, data = pb_long, family = binomial(), n
 
 
 ### Formula for simcf
-logit_race_form <- turned_out ~ pb + after_pb + election_p + election_pp +
-  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+logit_race_form <- turned_out ~ pb + after_pb + compet + election_p + election_pp +
+  year_2009 + year_2010 + year_2012 + year_2013 + year_2014 +  year_2016 + year_2017 +
   after_pb*race_B + after_pb*race_A + after_pb*race_H + after_pb*race_U +
   year_2009*race_B + year_2009*race_A + year_2009*race_H + year_2009*race_U +
   year_2010*race_B + year_2010*race_A + year_2010*race_H + year_2010*race_U +
-  year_2011*race_B + year_2011*race_A + year_2011*race_H + year_2011*race_U +
   year_2012*race_B + year_2012*race_A + year_2012*race_H + year_2012*race_U +
   year_2013*race_B + year_2013*race_A + year_2013*race_H + year_2013*race_U +
   year_2014*race_B + year_2014*race_A + year_2014*race_H + year_2014*race_U +
-  year_2015*race_B + year_2015*race_A + year_2015*race_H + year_2015*race_U +
+  # year_2015*race_B + year_2015*race_A + year_2015*race_H + year_2015*race_U +
   year_2016*race_B + year_2016*race_A + year_2016*race_H + year_2016*race_U +
   year_2017*race_B + year_2017*race_A + year_2017*race_H + year_2017*race_U +
   Female + age + I(age^2) + I(age_at_vote < 18) + 
@@ -185,22 +257,22 @@ logit_race_form <- turned_out ~ pb + after_pb + election_p + election_pp +
 ######################## DISAGGREGATE BY majmatch ---------------------------------------------------------------------------------------------------------
 ### Estimated model
 
-logit_majmatch_simcf <- turned_out ~ pb + after_pb + election_p + election_pp +
-  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+logit_majmatch_simcf <- turned_out ~ pb + after_pb + compet + election_p + election_pp +
+  year_2009 + year_2010 +  year_2012 + year_2013 + year_2014 +  year_2016 + year_2017 +
   race_B + race_A + race_H + race_U + 
   majmatch*after_pb +
-  year_2009*majmatch + year_2010*majmatch + year_2011*majmatch + year_2012*majmatch + year_2013*majmatch + year_2014*majmatch + year_2015*majmatch + year_2016*majmatch + year_2017*majmatch +
+  year_2009*majmatch + year_2010*majmatch +  year_2012*majmatch + year_2013*majmatch + year_2014*majmatch + year_2016*majmatch + year_2017*majmatch +
   Female + age + I(age^2) + I(age_at_vote < 18) + 
   medhhinc_10k + college_pct + (1 | VANID) + (1 | NYCCD)
 
 lme_majmatch_simcf <- glmer(logit_majmatch_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients),
 
 ### Formula for simcf
-logit_majmatch_form <-  turned_out ~ pb + after_pb + election_p + election_pp +
-  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+logit_majmatch_form <-  turned_out ~ pb + after_pb + compet + election_p + election_pp +
+  year_2009 + year_2010 + year_2012 + year_2013 + year_2014 +  year_2016 + year_2017 +
   race_B + race_A + race_H + race_U + 
   majmatch*after_pb +
-  year_2009*majmatch + year_2010*majmatch + year_2011*majmatch + year_2012*majmatch + year_2013*majmatch + year_2014*majmatch + year_2015*majmatch + year_2016*majmatch + year_2017*majmatch +
+  year_2009*majmatch + year_2010*majmatch + year_2012*majmatch + year_2013*majmatch + year_2014*majmatch + year_2016*majmatch + year_2017*majmatch +
   Female + age + I(age^2) + I(age_at_vote < 18) + 
   medhhinc_10k + college_pct
 
@@ -209,22 +281,22 @@ logit_majmatch_form <-  turned_out ~ pb + after_pb + election_p + election_pp +
 ######################## DISAGGREGATE BY gender ---------------------------------------------------------------------------------------------------------
 ### Estimated model
 
-logit_gender_simcf <- turned_out ~ pb + after_pb + election_p + election_pp +
-  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+logit_gender_simcf <- turned_out ~ pb + after_pb + compet + election_p + election_pp +
+  year_2009 + year_2010 + year_2012 + year_2013 + year_2014 +  year_2016 + year_2017 +
   race_B + race_A + race_H + race_U + 
   Female*after_pb +
-  year_2009*Female + year_2010*Female + year_2011*Female + year_2012*Female + year_2013*Female + year_2014*Female + year_2015*Female + year_2016*Female + year_2017*Female +
+  year_2009*Female + year_2010*Female  + year_2012*Female + year_2013*Female + year_2014*Female + year_2016*Female + year_2017*Female +
   age + I(age^2) + I(age_at_vote < 18) + 
   medhhinc_10k + college_pct + majmatch + (1 | VANID) + (1 | NYCCD)
 
 lme_gender_simcf <- glmer(logit_gender_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients),
 
 ### Formula for simcf
-logit_gender_form <-  turned_out ~ pb + after_pb + election_p + election_pp +
-  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+logit_gender_form <-  turned_out ~ pb + after_pb + compet + election_p + election_pp +
+  year_2009 + year_2010 + year_2012 + year_2013 + year_2014 +  year_2016 + year_2017 +
   race_B + race_A + race_H + race_U + 
   Female*after_pb +
-  year_2009*Female + year_2010*Female + year_2011*Female + year_2012*Female + year_2013*Female + year_2014*Female + year_2015*Female + year_2016*Female + year_2017*Female +
+  year_2009*Female + year_2010*Female  + year_2012*Female + year_2013*Female + year_2014*Female + year_2016*Female + year_2017*Female +
   age + I(age^2) + I(age_at_vote < 18) + 
   medhhinc_10k + college_pct + majmatch
 
@@ -233,49 +305,49 @@ logit_gender_form <-  turned_out ~ pb + after_pb + election_p + election_pp +
 ######################## DISAGGREGATE BY well educ ---------------------------------------------------------------------------------------------------------
 ### Estimated model
 pb_long <- pb_long %>% mutate(well_educ = as.numeric(college_pct > quantile(college_pct, probs = .5)))
-logit_educ_simcf <-  turned_out ~ pb + after_pb + election_p + election_pp +
-  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+logit_educ_simcf <-  turned_out ~ pb + after_pb + compet + election_p + election_pp +
+  year_2009 + year_2010  + year_2012 + year_2013 + year_2014 +  year_2016 + year_2017 +
   race_B + race_A + race_H + race_U + 
   Female + age + I(age^2) + I(age_at_vote < 18) + 
   medhhinc_10k + college_pct + majmatch +
   college_pct*after_pb +
-  college_pct*year_2009 + college_pct*year_2010 + college_pct*year_2011 + college_pct*year_2012 + college_pct*year_2013 + college_pct*year_2014 + college_pct*year_2015 + college_pct*year_2016 + college_pct*year_2016 +
+  college_pct*year_2009 + college_pct*year_2010 +  college_pct*year_2012 + college_pct*year_2013 + college_pct*year_2014 + college_pct*year_2016 + college_pct*year_2016 +
   (1 | VANID) + (1 | NYCCD)
 
 lme_educ_simcf <- glmer(logit_educ_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients),
 
 ### Formula for simcf
-logit_educ_form <-  turned_out ~ pb + after_pb + election_p + election_pp +
-  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+logit_educ_form <-  turned_out ~ pb + after_pb + compet + election_p + election_pp +
+  year_2009 + year_2010 +  year_2012 + year_2013 + year_2014 +  year_2016 + year_2017 +
   race_B + race_A + race_H + race_U + 
   Female + age + I(age^2) + I(age_at_vote < 18) + 
   medhhinc_10k + college_pct + majmatch +
   college_pct*after_pb +
-  college_pct*year_2009 + college_pct*year_2010 + college_pct*year_2011 + college_pct*year_2012 + college_pct*year_2013 + college_pct*year_2014 + college_pct*year_2015 + college_pct*year_2016 + college_pct*year_2016
+  college_pct*year_2009 + college_pct*year_2010 + college_pct*year_2012 + college_pct*year_2013 + college_pct*year_2014 + college_pct*year_2016 + college_pct*year_2016
 
 
 ################################################################################################################################################
 ######################## DISAGGREGATE BY income ---------------------------------------------------------------------------------------------------------
 ### Estimated model
 #pb_long <- pb_long %>% mutate(income = as.numeric(medhhinc_10k > quantile(medhhinc_10k, probs = .5)))
-logit_income_simcf <- turned_out ~ pb + after_pb + election_p + election_pp +
-  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+logit_income_simcf <- turned_out ~ pb + after_pb + compet + election_p + election_pp +
+  year_2009 + year_2010 + year_2012 + year_2013 + year_2014 +  year_2016 + year_2017 +
   race_B + race_A + race_H + race_U + 
   Female + age + I(age^2) + I(age_at_vote < 18) + 
   medhhinc_10k + college_pct + majmatch +
   medhhinc_10k*after_pb +
-  medhhinc_10k*year_2009 + medhhinc_10k*year_2010 + medhhinc_10k*year_2011 + medhhinc_10k*year_2012 + medhhinc_10k*year_2013 + medhhinc_10k*year_2014 + medhhinc_10k*year_2015 + medhhinc_10k*year_2016 + medhhinc_10k*year_2016  + 
+  medhhinc_10k*year_2009 + medhhinc_10k*year_2010 + medhhinc_10k*year_2012 + medhhinc_10k*year_2013 + medhhinc_10k*year_2014 + medhhinc_10k*year_2016 + medhhinc_10k*year_2016  + 
   (1 | VANID) + (1 | NYCCD)
 lme_income_simcf <- glmer(logit_income_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients),
 
 ### Formula for simcf
-logit_income_form <-  turned_out ~ pb + after_pb + election_p + election_pp +
-  year_2009 + year_2010 + year_2011 + year_2012 + year_2013 + year_2014 + year_2015 + year_2016 + year_2017 +
+logit_income_form <-  turned_out ~ pb + after_pb + compet + election_p + election_pp +
+  year_2009 + year_2010 + year_2012 + year_2013 + year_2014 +  year_2016 + year_2017 +
   race_B + race_A + race_H + race_U + 
   Female + age + I(age^2) + I(age_at_vote < 18) + 
   medhhinc_10k + college_pct + majmatch +
   medhhinc_10k*after_pb +
-  medhhinc_10k*year_2009 + medhhinc_10k*year_2010 + medhhinc_10k*year_2011 + medhhinc_10k*year_2012 + medhhinc_10k*year_2013 + medhhinc_10k*year_2014 + medhhinc_10k*year_2015 + medhhinc_10k*year_2016 + medhhinc_10k*year_2016  
+  medhhinc_10k*year_2009 + medhhinc_10k*year_2010 + medhhinc_10k*year_2012 + medhhinc_10k*year_2013 + medhhinc_10k*year_2014 + medhhinc_10k*year_2016 + medhhinc_10k*year_2016  
 
 
 ################################################################################################################################################
@@ -283,14 +355,14 @@ logit_income_form <-  turned_out ~ pb + after_pb + election_p + election_pp +
 ### Estimated model
 pb_long <- pb_long %>% mutate(youth = ifelse(age <= 29, 1, 0))
 logit_youth_simcf <- turned_out ~ pb + after_pb*youth + race_B + race_A + race_H + race_U +
-  year_2009*youth + year_2010*youth + year_2011*youth + year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth + year_2017*youth +
-  election_p + election_pp + Female + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + college_pct + majmatch  + (1 | VANID) + (1 | NYCCD)
+  year_2009*youth + year_2010*youth + year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth + year_2017*youth +
+  compet + election_p + election_pp + Female + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + college_pct + majmatch  + (1 | VANID) + (1 | NYCCD)
 lme_youth_simcf <- glmer(logit_youth_simcf, data = pb_long, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients),
 
 ### Formula for simcf
 logit_youth_form <-  turned_out ~ pb + after_pb*youth + race_B + race_A + race_H + race_U +
-  year_2009*youth + year_2010*youth + year_2011*youth + year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth + year_2017*youth +
-  election_p + election_pp + Female + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + college_pct + majmatch
+  year_2009*youth + year_2010*youth + year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth + year_2017*youth +
+  compet + election_p + election_pp + Female + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + college_pct + majmatch
 
 
 ######################## DISAGGREGATE BY Youth - ONLY 18+ ---------------------
@@ -298,14 +370,14 @@ logit_youth_form <-  turned_out ~ pb + after_pb*youth + race_B + race_A + race_H
 ### Estimated model
 pb_long_18p <- pb_long %>% mutate(youth = ifelse(age <= 29, 1, 0)) %>%  filter(age_at_vote >= 18)
 logit_youth18p_simcf <- turned_out ~ pb + after_pb*youth + race_B + race_A + race_H + race_U +
-  year_2009*youth + year_2010*youth + year_2011*youth + year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth + year_2017*youth +
-  election_p + election_pp + age + medhhinc_10k + white + majmatch  + (1 | VANID) + (1 | NYCCD)
+  year_2009*youth + year_2010*youth + year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth + year_2017*youth +
+  compet + election_p + election_pp + age + medhhinc_10k + white + majmatch  + (1 | VANID) + (1 | NYCCD)
 lme_youth18p_simcf <- glmer(logit_youth18p_simcf, data = pb_long_18p, family = binomial(), nAGQ = 0)    #start = list(fixef = bas_log$coefficients), 
 
 ### Formula for simcf
 logit_youth18p_form <-   turned_out ~ pb + after_pb*youth + race_B + race_A + race_H + race_U +
-  year_2009*youth + year_2010*youth + year_2011*youth + year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth + year_2017*youth +
-  election_p + election_pp + age + medhhinc_10k + white + majmatch
+  year_2009*youth + year_2010*youth +  year_2012*youth + year_2013*youth + year_2014*youth + year_2015*youth + year_2016*youth + year_2017*youth +
+  compet + election_p + election_pp + age + medhhinc_10k + white + majmatch
 
 
 ################################################################################################################################################
@@ -422,7 +494,7 @@ for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2008", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2009", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2010", x = 0, xpre = 0, scen = i)
-  xhyp <- cfChange(xhyp, "year_2011", x = 0, xpre = 0, scen = i)
+  # xhyp <- cfChange(xhyp, "year_2011", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2012", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2013", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2014", x = 0, xpre = 0, scen = i)
@@ -487,7 +559,7 @@ for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2008", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2009", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2010", x = 0, xpre = 0, scen = i)
-  xhyp <- cfChange(xhyp, "year_2011", x = 0, xpre = 0, scen = i)
+  # xhyp <- cfChange(xhyp, "year_2011", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2012", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2013", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2014", x = 0, xpre = 0, scen = i)
@@ -556,7 +628,7 @@ for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2008", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2009", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2010", x = 0, xpre = 0, scen = i)
-  xhyp <- cfChange(xhyp, "year_2011", x = 0, xpre = 0, scen = i)
+  # xhyp <- cfChange(xhyp, "year_2011", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2012", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2013", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2014", x = 0, xpre = 0, scen = i)
@@ -624,7 +696,7 @@ for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2008", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2009", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2010", x = 0, xpre = 0, scen = i)
-  xhyp <- cfChange(xhyp, "year_2011", x = 0, xpre = 0, scen = i)
+  # xhyp <- cfChange(xhyp, "year_2011", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2012", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2013", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2014", x = 0, xpre = 0, scen = i)
@@ -688,7 +760,7 @@ for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2008", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2009", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2010", x = 0, xpre = 0, scen = i)
-  xhyp <- cfChange(xhyp, "year_2011", x = 0, xpre = 0, scen = i)
+  # xhyp <- cfChange(xhyp, "year_2011", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2012", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2013", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2014", x = 0, xpre = 0, scen = i)
@@ -771,7 +843,7 @@ simyear <- "2016"
 for (i in 1:nscen){
   xhyp <- cfChange(xhyp, "year_2009", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2010", x = 0, xpre = 0, scen = i)
-  xhyp <- cfChange(xhyp, "year_2011", x = 0, xpre = 0, scen = i)
+  # xhyp <- cfChange(xhyp, "year_2011", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2012", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2013", x = 0, xpre = 0, scen = i)
   xhyp <- cfChange(xhyp, "year_2014", x = 0, xpre = 0, scen = i)
@@ -875,7 +947,7 @@ ggplot(preds_fd_plot, aes(x = group, y = pe, ymin = lower, ymax =upper, color = 
   theme_minimal() +
   theme(legend.position = "none", 
         axis.title = element_text(size = 11))
-ggsave("Paper/Figs/group_fds.pdf", width = 6.5, height = 5.5)
+ggsave(paste0(path, "group_fds.pdf"), width = 6.5, height = 5.5)
 
 ### Predictions for 2017 --------------------------------------------------------------------------------------------------------
 
@@ -1010,7 +1082,7 @@ ggplot(preds_fd_plot_2017, aes(x = group, y = pe, ymin = lower, ymax =upper, col
   coord_flip() +
   theme_minimal() +
   theme(legend.position = "none")
-ggsave("Paper/Figs/group_fds_2017.pdf", width = 6.5, height = 5.5)
+ggsave(paste0(path, "group_fds_2017.pdf"), width = 6.5, height = 5.5)
 
 
 
@@ -1034,7 +1106,7 @@ ggplot(preds_fd_comb, aes(x = group, y = pe, ymin = lower, ymax =upper, color = 
   theme_minimal() +
   theme(legend.position = "bottom",
         axis.title=element_text(size=10))
-ggsave("Paper_text/Figs/group_fds_bothyears.pdf", width = 6.75, height = 6.5)
+ggsave(paste0(path, "group_fds_bothyears.pdf"), width = 6.75, height = 6.5)
 
 
 ### Fit statistics for each ------------------------------------------------------------------------------------
