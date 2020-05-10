@@ -68,3 +68,7 @@ allout <- matching_models %>%
 ## save matching results to disc
 saveRDS(allout, file = paste0("data/cleaned_R_results/matching_res", suffix, ".rds"))
 
+allout %>% 
+  mutate(n_treat = map_dbl(outdf, ~sum(.$pb))) %>% 
+  select(match_type, n_treat) %>% 
+  arrange(desc(n_treat))
