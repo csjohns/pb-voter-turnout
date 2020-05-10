@@ -29,55 +29,7 @@ library(simcf)
 
 # functions
 source("create_pb_long.R")
-
-limit_outdf <- function(df) {
-  df %>% 
-    ungroup() %>% 
-    select(VANID, cem_group)
-}
-make_analysis_vf <- function(match_res, voterfile = voterfile) {
-  match_res %>% 
-    ungroup() %>% 
-    select(VANID, cem_group) %>% 
-    distinct() %>% 
-    left_join(voterfile)
-}
-
-
-attach_competition <- function(df) {# note requires vf_compet to be loaded
-  df %>% 
-    left_join(vf_compet)
-}
-
-create_model_data <- function(df, model_form) {
-  df <- df %>% 
-    mutate(Race = relevel(as.factor(Race), ref = "W"),
-           election_type = relevel(as.factor(election_type), ref = "g")) %>% 
-    simcf::extractdata(model_form, ., na.rm = TRUE)
-  df
-}
-
-preprocess_lmer <- function(match_res, model_form) {
-  ## process analysis df to pb_long df for analysis (creating wide pb table along the way)
-  df <- make_analysis_vf(match_res, voterfile)
-  df <- create_pb_long(df) %>% 
-    ungroup() %>% 
-    attach_competition()
-  df
-}
-
-
-fit_lmer_model <- function(df, model_form) {
-  ### run model
-  res <- glmer(model_form, data = df, family = binomial(), nAGQ = 0) 
-  # progbar$tick()$print()
-  res
-}
-calc_margin_effect <- function(data, model_res){
-  margins::dydx(data, model_res, "after_pb", change = c(0,1))[[1]] %>% mean() 
-}
-
-
+source("rr_regression_functions.R")
 
 ### Creating/loading matched datasets
 # source("pub_vf_matching.R")
