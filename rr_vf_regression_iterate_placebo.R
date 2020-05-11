@@ -30,6 +30,7 @@ library(simcf)
 
 # functions
 source("create_pb_long_placebo.R")
+source("rr_regression_functions.R")
 
 limit_outdf <- function(df) {
   nids <- n_distinct(df$VANID)
@@ -123,26 +124,8 @@ voterfile <- voterfile %>%
 
 
 ### Load competitiveness ---------------------------------------------------------------------------------
-vf_compet <- readRDS("data/cleaned_R_results/wide_compet.rds") %>% 
-  filter(VANID %in% uniquevanids)
-
-# load presidential results
-source("BOE_pres_process.R")
-
-## attach pres, make long w/election & year
-vf_compet <- vf_compet %>% 
-  attach_pres(pres_wide) 
-
-names(vf_compet) <- str_replace(names(vf_compet), "general", "g")
-names(vf_compet) <- str_replace(names(vf_compet), "primary", "p")
+vf_compet <- load_vf_compet(uniquevanids)
   
-vf_compet <- vf_compet %>% 
-  gather(key = election, value = compet, -VANID) %>% 
-  separate(election, c("year", "election_type")) %>% 
-  mutate(year = as.numeric(year)) %>% 
-  group_by(year, election_type) %>% 
-  mutate(compet = replace_na(compet, mean(compet))) %>% 
-  ungroup()
   
 ## create pb_longs (w/compet)
 # .vf_compet <- vf_compet %>% 
@@ -151,19 +134,19 @@ vf_compet <- vf_compet %>%
 #   split(.$groupid) 
 
 allout <- allout %>% 
-  slice(1:4) %>%
+  # slice(1:4) %>%
   mutate(pblong = map(outdf, preprocess_lmer))
            
 ### Define model formulas
 formula_df <- tibble(model_name = c("logit_minimal_form",
-                                    "logit_demog_form",
-                                    "logit_tract_form",
-                                    "lme_final_form",
+                                    # "logit_demog_form",
+                                    # "logit_tract_form",
+                                    # "lme_final_form",
                                     "lme_comp"),
                      model_formula = list(turned_out ~ pb + after_pb + as.factor(year) + election_type + (1| VANID) + (1|NYCCD),
-                                          turned_out ~ pb + after_pb  + as.factor(year) + election_type + Race + Female + age + I(age^2)  + (1| VANID) + (1|NYCCD),
-                                          turned_out ~ pb + after_pb  + as.factor(year) + election_type +  Race + Female + age + I(age^2)+ I(age_at_vote < 18) + college_pct + medhhinc_10k +(1| VANID) + (1|NYCCD),
-                                          turned_out ~ pb + after_pb + Race + Female + as.factor(year) + election_type + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + college_pct + majmatch + (1 | VANID) + (1|NYCCD),
+                                          # turned_out ~ pb + after_pb  + as.factor(year) + election_type + Race + Female + age + I(age^2)  + (1| VANID) + (1|NYCCD),
+                                          # turned_out ~ pb + after_pb  + as.factor(year) + election_type +  Race + Female + age + I(age^2)+ I(age_at_vote < 18) + college_pct + medhhinc_10k +(1| VANID) + (1|NYCCD),
+                                          # turned_out ~ pb + after_pb + Race + Female + as.factor(year) + election_type + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + college_pct + majmatch + (1 | VANID) + (1|NYCCD),
                                           turned_out ~ pb + after_pb + Race + Female + as.factor(year) + election_type + compet + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + college_pct + majmatch + (1 | VANID) + (1|NYCCD)
                      )) 
 
@@ -207,3 +190,13 @@ robust <- lmers %>%
     coord_flip()
 robust
 library(plotly)
+ggplotly(robust)
+
+compform <- allout$model_formula[allout$model_name == "lme_comp"][[1]]
+meaneffect <- allout %>% 
+  filter(match_type == "All, fine" & model_name == "lme_comp") %>% 
+  pluck("pblong", 1) %>% 
+  drop_na() %>% 
+  margins::dydx(allout$result[allout$model_name=="lme_comp"][[1]],  "after_pb", change = c(0,1), allow.new.levels = T) %>% 
+  .$dydx_after_pb %>% mean() 
+

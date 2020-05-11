@@ -48,7 +48,7 @@ source("pb_cleanup_addnyccd_foranalysis.R")
 pbnyc <- read.csv(file = "pbnyc_district_votes.csv", as.is = TRUE)
 pb2016 <- pbnyc %>% filter(districtCycle == 1 & voteYear == 2016) 
 pbdistricts <- unique(pbnyc$district)
-rm(pbnyc)
+# rm(pbnyc)
  
 pb <- pb %>% 
   filter(pbdistrict %in% c(23, 39, pb2016$district) | pb_2012 == 1 |
@@ -162,7 +162,7 @@ voterfile <- voterfile %>%
   mutate(pb = as.numeric(NYCCD %in% compare_districts)) 
 
 # set downsizing factor
-tot_pb_n <- sum(voterfile$pb) *.1
+tot_pb_n <- sum(voterfile$pb) *.075
 # calculate sample sizes, nest df, sample list columsn return to dataframe
 vf2 <- voterfile %>% 
   group_by(NYCCD) %>% 
@@ -177,4 +177,11 @@ vf2 <- voterfile %>%
   select(NYCCD, samp) %>% 
   unnest(samp)
 
+vf2 <- pbnyc %>% 
+  filter(districtCycle == 1) %>% 
+  select(NYCCD = district, pbyear = voteYear) %>% 
+  left_join(vf2, .) %>% 
+  ungroup()
+  
+  
 saveRDS(vf2, paste0("data/cleaned_R_results/voterfile_for_matching", suffix, ".rds"))
