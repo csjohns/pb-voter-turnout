@@ -15,14 +15,14 @@
 
 library(purrr)
 
-match_names <- c("All vars, fine", "All vars, coarse", "Excl compet", "Excl tract", "Only Exact")
+match_names <- c("All vars, fine", "All vars, coarse", "Excl compet", "Only Exact")
 matching_models <- tibble(match_type = match_names,
                           matching_fields = vector("list", length(match_names)),
                           cutpoints = vector("list", length(match_names)),
                           grouping = vector("list", length(match_names)))
 
 
-## load threshold lists (runn against full voterfile - generated in )
+## load threshold lists (runn against full matching_df - generated in )
 load("data/cleaned_R_results/cutpoints.Rdata")
 
 fine_group <- list(
@@ -36,23 +36,19 @@ coarse_group <-  list(
   )
 
 varlists <- list(
-  allvars = names(select(voterfile, Race, agegroup, Sex, effective_district,
+  allvars = names(select(matching_df, Race, agegroup, Sex, effective_district,
                    g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008, 
                    white, college, medhhinc , majmatch,starts_with("comp_"))),
-  excl_compet = names(select(voterfile, Race, agegroup, Sex, effective_district,
+  excl_compet = names(select(matching_df, Race, agegroup, Sex, effective_district,
                              g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008, 
                              white, college, medhhinc, majmatch)),
-  excl_tract = names(select(voterfile, Race, agegroup, Sex, effective_district,
-                            g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008, 
-                            dist_white, dist_college)),
-  only_exact = names(select(voterfile, Race, agegroup, Sex, effective_district,
+  only_exact = names(select(matching_df, Race, agegroup, Sex, effective_district,
                             g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008))
 )
 
 matching_models$matching_fields <- list(varlists$allvars, 
                                         varlists$allvars, 
                                         varlists$excl_compet,
-                                        varlists$excl_tract,
                                         varlists$only_exact)
 
 keep_vars <- function(cutlist, name_set) {cutlist[intersect(names(cutlist), varlists[[name_set]])]}
@@ -60,12 +56,10 @@ keep_vars <- function(cutlist, name_set) {cutlist[intersect(names(cutlist), varl
 matching_models$cutpoints <- list(fine_cuts,
                                   coarse_cuts,
                                   keep_vars(fine_cuts, "excl_compet"),
-                                  keep_vars(fine_cuts, "excl_tract"),
                                   keep_vars(fine_cuts, "only_exact"))
 
 
 matching_models$grouping <- list(fine_group,
                                   coarse_group,
                                   keep_vars(fine_group, "excl_compet"),
-                                 keep_vars(fine_group, "excl_tract"),
                                   keep_vars(fine_group, "only_exact"))
