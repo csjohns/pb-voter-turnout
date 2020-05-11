@@ -54,10 +54,10 @@ calc_margin_effect <- function(data, model_res){
 }
 
 
-load_vf_compet <- function(sample_df) {
-  stopifnot("VANID" %in% names(sample_df))
+load_vf_compet <- function(vanids) {
+  
   vf_compet <- readRDS("data/cleaned_R_results/wide_compet_clean.rds") %>% 
-    semi_join(matched_data, by = "VANID")
+    filter(VANID %in% vanids)
   
   # load presidential results
   source("BOE_pres_process.R")

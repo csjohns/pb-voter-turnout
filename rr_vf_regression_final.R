@@ -38,13 +38,17 @@ voterfile <- voterfile %>%
   select(-starts_with("comp_"))
 
 ### Load competitiveness ---------------------------------------------------------------------------------
-vf_compet <- load_vf_compet(matched_data)
+vf_compet <- load_vf_compet(unique(voterfile$VANID))
 
 ### process, make long, attach competitiveness
 pb_long <- preprocess_lmer(matched_data)
 
 #### Set reference levels for factor variables 
-pb_long <- create_model_factors(pb_long)
+pb_long <- create_model_factors(pb_long) 
+
+### remove 2011 + 2015 as non-informative years
+pb_long <- pb_long %>% 
+  filter(! year %in% c(2011, 2015))
 
 
 ####  Model explorations ---------------------------------------------------------------------------------------------------------------------------
@@ -180,26 +184,35 @@ lme_tract  <- glmer(logit_tract_form, data = pb_long, family = binomial(), nAGQ 
 lme_final_form <- turned_out ~ pb + after_pb + Race + Female + as.factor(year) + election_type + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + college_pct + majmatch + (1 | VANID) + (1|NYCCD)
 lme_final <- glmer(lme_final_form, data = pb_long, family = binomial(), nAGQ = 0) 
 
+### LMER model incl comp ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lme_compet_form <- turned_out ~ pb + after_pb + compet + Race + Female + as.factor(year) + election_type + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + college_pct + majmatch + (1 | VANID) + (1|NYCCD)
+lme_compet <- glmer(lme_compet_form, data = pb_long, family = binomial(), nAGQ = 0) 
+
+
 ### Table / effect output for paper. "mainregs.tex" ------------------------------------------------------------------------------------------------------------------------------------------------------ 
 ## calculating average effect from final model
-meaneffect <- margins::dydx(pb_long, lme_final, "after_pb", change = c(0,1))[[1]] %>% mean() 
+meaneffect <- simcf::extractdata(lme_compet_form, pb_long, na.rm = T) %>% 
+  margins::dydx(lme_compet, "after_pb", change = c(0,1)) %>% 
+  .$dydx_after_pb %>% mean() 
 print(meaneffect)
-save(lme_minimal, lme_demog, lme_tract, lme_final, meaneffect, file = "mainresults.RData")
+all_res <- list(lme_minimal, lme_demog, lme_tract, lme_final, lme_compet)
+save(all_res, file = "data/cleaned_R_results/main_effects.rds")
 
 library(stargazer)
-stargazer((list(lme_minimal, lme_demog, lme_tract, lme_final)),
+stargazer(all_res, 
           out = "Paper_text/Tables/mainregs.tex", label = "main_results",
           title = "Individual voter turnout difference-in-difference regression results: no interactions",
-          column.labels = c("Minimal", "Demog.", "Tract", "Majority Match"),
+          column.labels = c("Minimal", "Demog.", "Tract", "Majority Match", "Compet."),
           order = c("^pb$", "^after\\_pb$", "^election\\_typep$", "^election\\_typepp$",
                     "^RaceB$", "^RaceA$",  "^RaceH$", "^RaceU$", "^Female$",
                     "^age$", "^I\\(age\\^2\\)$", "I\\(age\\_at\\_vote < 18\\)TRUE",
-                    "^college\\_pct$", "^medhhinc\\_10k$", "^majmatchTRUE$"),
+                    "^college\\_pct$", "^medhhinc\\_10k$", "^majmatchTRUE$", "compet"),
           covariate.labels = c("PB district", "After PB", "Primary election", "Pres. Primary",
                                "Black", "Asian", "Hispanic", "Race Unknown", "Female",
                                "Age in years", "Age\\textsuperscript{2}", "18+ at vote",
-                               "\\% college educated", "Median HH income", "Majority Race"),
+                               "\\% college educated", "Median HH income", "Majority Race", "Competitiveness"),
           dep.var.labels.include = FALSE, dep.var.caption = "",
+          model.numbers = FALSE,
           digit.separator = "",intercept.bottom = TRUE, no.space = TRUE,
           omit = c("year"), omit.labels = c("Year fixed effects?"), 
           keep.stat = c("n", "aic", "bic", "n"),
@@ -209,3 +222,4 @@ stargazer((list(lme_minimal, lme_demog, lme_tract, lme_final)),
           notes.label = "",
           notes.align = "l",
           notes.append = FALSE)
+Q

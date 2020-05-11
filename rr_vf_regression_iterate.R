@@ -33,7 +33,7 @@ source("rr_regression_functions.R")
 
 ### Creating/loading matched datasets
 # source("pub_vf_matching.R")
-suffix <- ""
+suffix <- "_within_dist"
 allout <- readRDS(paste0("data/cleaned_R_results/matching_res", suffix, ".RDS"))
 allout <- allout %>% 
   select(match_type, outdf)
@@ -54,32 +54,7 @@ voterfile <- voterfile %>%
 
 
 ### Load competitiveness ---------------------------------------------------------------------------------
-vf_compet <- readRDS("data/cleaned_R_results/wide_compet_clean.rds") %>% 
-  filter(VANID %in% uniquevanids)
-
-# load presidential results
-source("BOE_pres_process.R")
-
-## attach pres, make long w/election & year
-vf_compet <- vf_compet %>% 
-  rename_all(~str_remove(., "comp_")) %>% 
-  attach_pres(pres_wide) 
-
-names(vf_compet) <- str_replace(names(vf_compet), "general", "g")
-names(vf_compet) <- str_replace(names(vf_compet), "primary", "p")
-  
-vf_compet <- vf_compet %>% 
-  gather(key = election, value = compet, -VANID) %>% 
-  mutate(election = str_remove_all(election, "comp_")) %>%
-  separate(election, c("year", "election_type")) %>% 
-  mutate(year = as.numeric(year)) %>% 
-  group_by(year, election_type) %>% 
-  mutate(compet = replace_na(compet, mean(compet[compet >0], na.rm = T))) %>% 
-  ungroup()
-  
-# replace years where that person have an election w/NA
-vf_compet <- vf_compet %>% 
-  mutate(compet = na_if(compet, "-99"))
+vf_compet <- load_vf_compet(uniquevanids)
 
 ## create pb_longs
 allout <- allout %>% 
@@ -89,7 +64,7 @@ allout <- allout %>%
 formula_df <- tibble(model_name = c("logit_minimal_form",
                                     # "logit_demog_form",
                                     # "logit_tract_form",
-                                    # "lme_final_form",
+                                    "lme_final_form",
                                     "lme_comp"),
                      model_formula = list(turned_out ~ pb + after_pb + as.factor(year) + election_type + (1| VANID) + (1|NYCCD),
                                           # turned_out ~ pb + after_pb  + as.factor(year) + election_type + Race + Female + age + I(age^2)  + (1| VANID) + (1|NYCCD),
