@@ -1,10 +1,11 @@
 ## comparing the with and without district incumbency values
-
+# !diagnostics off
 
 # Load libraries
 library(dplyr)
 library(tidyr)
 library(purrr)
+library(furrr)
 library(broom)
 library(ggplot2)
 library(lubridate)
@@ -67,7 +68,7 @@ suffix <- ""
 voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching", suffix, ".rds"))
 allout <- readRDS(paste0("data/cleaned_R_results/matching_res", suffix, ".RDS")) 
 
-# 
+# ------------
 # cbtout <- calc_pb_balance(voterfile, allout$outdf[[1]], allout$matching_fields[[1]])
 # 
 # love.plot(cbtout, threshold = .1, abs = FALSE,  title = "") + 
@@ -115,7 +116,7 @@ pb_balance_plot  <- function(testout, match_type) {
   p <- love.plot(testout, threshold = .1, abs = TRUE, #var.names = vnames, 
                  title = match_type, line = T) +
     theme(legend.position = "bottom") +
-    labs(x = "Mean differences PB in sample - not in sample", color = "", shape = "",
+    labs(x = "Mean differences PB - not PB", color = "", shape = "",
          title = match_type)
   p
 }
@@ -151,7 +152,7 @@ geom_vline(aes(xintercept = 0), alpha = .6)
 
 plotly::ggplotly(p)
 
-##### case/control balance
+##### case/control balance -------------------------------------------
 
 for (i in 1:nrow(allout)) {
   testout <- calc_control_balance(voterfile, allout$outdf[[i]], fields = c(age, varlist))
@@ -176,6 +177,68 @@ for (i in 1:nrow(allout)) {
          title = allout$match_type[[i]])
   print(p)
 }
+
+
+##
+
+cc_balance_plot  <- function(testout, plotlabel) {
+  # tt <- testout
+  
+  p <- love.plot(testout, threshold = .1, abs = FALSE, title = "plotlabel", #var.names = vnames, 
+                 line = T, sample.names = c("Before Matching", "After Matching")) +
+    theme(legend.position = "bottom") +
+    labs(x = "Mean differences PB - not PB", color = "", shape = "")
+  p
+}
+
+
+##
+
+# plan(multiprocess)
+varlist <- allout$matching_fields[allout$match_type == "All, fine"][[1]]
+
+allout <- allout %>%# slice(15:16) %>% 
+  #select(-balance, -loveplot)
+  # mutate(balance = map(outdf, calc_control_balance, voterfile = voterfile, fields = c("age", varlist))) #%>%
+  mutate(loveplot = map2(.x = balance, .y = match_type, .f=cc_balance_plot))
+allout$loveplot <- vector("list", length = nrow(allout))
+for (r in 1:nrow(allout )) {
+  testout <- allout$balance[[r]]
+  label  <- allout$match_type[[r]]
+  allout$loveplot[[r]] <- p<- cc_balance_plot(testout, label)
+  print(p)
+}
+for (r in seq_along(nrow(allout ))) {
+ print(allout$loveplot[[r]])
+}
+
+  
+# allout %>% select(match_type, outdf, balance) %>% saveRDS(file = "data/temp/cc_loveplots.rds")
+# allout  <- readRDS("data/temp/cc_loveplots.rds")
+g <- ggarrange(plotlist = allout$loveplot[2:16], nrow = 3, ncol = 5, common.legend = TRUE)
+ggsave(plot = g, filename = "data/temp/giant_plot.png", width = 18, height = 15)
+
+
+comb_compar <- allout %>% 
+  mutate(balance_pb = map2(outdf, match_type, 
+                           .f = ~extract_balance_df(calc_pb_balance(voterfile = voterfile, 
+                                                                    matched = .x, 
+                                                                    fields = c("age", varlist)), 
+                                                    label = .y))) %>% 
+  pluck("balance_pb") %>% 
+  bind_rows() %>% 
+  mutate(start_point = 0)
+
+p <- comb_compar %>% 
+  filter(variable != "inmatch") %>% 
+  ggplot(aes(x = Diff.Un, y = forcats::fct_reorder(variable, Diff.Un), color = model, fill = model, shape = model, group = model)) +
+  geom_segment(aes(xend = start_point, yend = variable )) +
+  # geom_line() +
+  geom_point() +
+  # geom_bar(stat = "identity", position = "dodge")
+  geom_vline(aes(xintercept = 0), alpha = .6)
+
+plotly::ggplotly(p)
 
 
 
