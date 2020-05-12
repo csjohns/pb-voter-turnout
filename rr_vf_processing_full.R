@@ -37,10 +37,11 @@ pb <- readRDS("data/cleaned_R_results/pb.rds")
 voterfile <- fread("PersonFile20180426-11056504994/PersonFile20180426-11056504994.txt")
 voterfile <- voterfile[!RegistrationStatusName %in% c('Applicant', 'Dropped', 'Unregistered') & DateReg != "" & !`Voter File VANID` %in% pb$VANID]
 
-## re-geocode based on latlong to assign voters missing council district to NYCCD
+set.seed(1851)
+## re-geocode based on latlong to assign voters missing council district to NYCCD - ED as last resort
 source("vf_gis_nyccdmatch.R")
 
-## re-geocode based on latlong to assign voters missing ??
+## re-geocode based on ED to assign voters missing NYCCD; then assign to pb districts based on PB logic
 source("pb_cleanup_addnyccd_foranalysis.R")
 
 

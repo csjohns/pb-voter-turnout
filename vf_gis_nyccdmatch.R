@@ -1,3 +1,12 @@
+sample1_without_na <- function(x){
+  x <- na.omit(x)
+  if (length(x) > 1) {
+    sample(as.vector(x), 1) }
+  else if (length(x) == 1) {
+    x
+  } else {NA}
+}
+
 ### geocoding to assign unassigned voters to NYCCD
 library(sf)
 
@@ -26,3 +35,30 @@ voterfile <- voterfile %>%
   select(-CounDist)
 
 rm(nyccdassign, nocds, cdsf)
+
+## fill in the districts still missing based on ED crosswalk
+nyccds <- read.csv("ed-nyccd-map.csv", as.is = TRUE)
+nyccds <- nyccds %>% 
+  mutate(ED = paste0("Ad ", str_sub(ElectDist, 1, 2), " - Ed ", str_sub(ElectDist, 3,5)))
+
+voterfile_missing <- voterfile %>% 
+  filter(is.na(CityCouncilName)) %>% 
+  select(`Voter File VANID`, PrecinctName, CityCouncilName) %>% 
+  mutate(NYCCD = ifelse(CityCouncilName == "", NA, CityCouncilName),
+         ED = ifelse(PrecinctName == "", NA, PrecinctName))
+
+nyccds <- full_join(nyccds, data.frame(ED = as.vector(na.omit(unique(voterfile_missing$ED))), stringsAsFactors = FALSE))
+
+for (i in 1:nrow(voterfile_missing)){
+  if(is.na(voterfile_missing$NYCCD[i])){
+    voterfile_missing$NYCCD[i] <- sample1_without_na(nyccds$CounDist[nyccds$ED == voterfile_missing$ED[i]])
+  }
+}
+
+voterfile <- voterfile_missing %>% 
+  select(`Voter File VANID`, NYCCD) %>% 
+  left_join(voterfile, ., by = "Voter File VANID") %>% 
+  mutate(CityCouncilName = coalesce(CityCouncilName, NYCCD)) %>% 
+  select(-NYCCD)
+
+rm(nyccds)

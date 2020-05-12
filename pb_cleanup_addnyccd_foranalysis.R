@@ -1,5 +1,13 @@
 ## Adding districts back in to the constructed pb table 
 
+sample1_without_na <- function(x){
+  x <- na.omit(x)
+  if (length(x) > 1) {
+    sample(as.vector(x), 1) }
+  else if (length(x) == 1) {
+    x
+  } else {NA}
+}
 
 nyccds <- read.csv("ed-nyccd-map.csv", as.is = TRUE)
 nyccds <- nyccds %>% 
@@ -14,7 +22,7 @@ nyccds <- full_join(nyccds, data.frame(ED = as.vector(na.omit(unique(pb$ED))), s
 
 for (i in 1:nrow(pb)){
   if(is.na(pb$NYCCD[i])){
-    pb$NYCCD[i] <- sample(nyccds$CounDist[nyccds$ED == pb$ED[i]], 1)
+    pb$NYCCD[i] <- sample1_without_na(nyccds$CounDist[nyccds$ED == pb$ED[i]])
   }
 }
 
@@ -50,7 +58,8 @@ pb2012 <- read.csv(file = "pbnyc_district_votes.csv", as.is = TRUE) %>%
   select(district, voters) 
 pb2012 <- pb %>% filter(pb_2012 == 1 & !is.na(pbdistrict)) %>% count(pbdistrict) %>% 
   left_join(pb2012, ., by = c(district = "pbdistrict")) %>% 
-  mutate(pct_missing = (voters-n)/sum(voters-n)) %>% 
+  mutate(n = replace_na(n, 0)) %>% 
+  mutate(pct_missing = (voters-n)/sum(voters-n, na.rm = T)) %>% 
   select(-voters, -n)
 pb$pbdistrict[pb$pb_2012 == 1 & is.na(pb$pbdistrict)] <- sample(c(pb2012$district),
                                                                 size = sum(pb$pb_2012 == 1 & is.na(pb$pbdistrict)), 
