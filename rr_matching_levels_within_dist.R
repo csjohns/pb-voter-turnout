@@ -15,15 +15,27 @@
 
 library(purrr)
 
-match_names <- c("All vars, fine", "All vars, coarse", "Excl compet", "Only Exact")
+match_names <- c("All vars, fine", "All vars, coarse", "Tract super", "Tract fine", "Only Exact")
 matching_models <- tibble(match_type = match_names,
                           matching_fields = vector("list", length(match_names)),
                           cutpoints = vector("list", length(match_names)),
                           grouping = vector("list", length(match_names)))
+granular <- stringr::str_extract(match_names, ("fine|coarse|super")) %>% 
+  replace_na("fine")
+
 
 
 ## load threshold lists (runn against full matching_df - generated in )
 load("data/cleaned_R_results/cutpoints.Rdata")
+
+
+super_group <- list(
+  g_early = list("0", c("1","2"), c("3", "4"), c("5", "6"), c("7", "8")), 
+  p_early = list("0", c("1","2"), c("3", "4"), c("5", "6"), c("7", "8"))
+)
+
+super_cuts <- fine_cuts
+super_cuts$age <- c(seq(-0.5, 89.5, 5), Inf)
 
 fine_group <- list(
   g_early = list("0",c("1","2", "3"), c("4", "5", "6"), c("7", "8")), 
@@ -39,7 +51,10 @@ varlists <- list(
   allvars = names(select(matching_df, Race, agegroup, Sex, effective_district,
                    g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008, 
                    white, college, medhhinc , majmatch,starts_with("comp_"))),
-  excl_compet = names(select(matching_df, Race, agegroup, Sex, effective_district,
+  tract_super = names(select(matching_df, Race, age, Sex, effective_district,
+                         g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008, 
+                         white, college, medhhinc , majmatch,starts_with("comp_"))),
+  tract_fine = names(select(matching_df, Race, agegroup, Sex, effective_district,
                              g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008, 
                              white, college, medhhinc, majmatch)),
   only_exact = names(select(matching_df, Race, agegroup, Sex, effective_district,
@@ -48,18 +63,35 @@ varlists <- list(
 
 matching_models$matching_fields <- list(varlists$allvars, 
                                         varlists$allvars, 
-                                        varlists$excl_compet,
+                                        varlists$tract_super,
+                                        varlists$tract_fine,
                                         varlists$only_exact)
 
-keep_vars <- function(cutlist, name_set) {cutlist[intersect(names(cutlist), varlists[[name_set]])]}
 
-matching_models$cutpoints <- list(fine_cuts,
-                                  coarse_cuts,
-                                  keep_vars(fine_cuts, "excl_compet"),
-                                  keep_vars(fine_cuts, "only_exact"))
+keep_vars <- function(cutlist, name_set) {cutlist[intersect(names(cutlist), name_set)]}
 
 
-matching_models$grouping <- list(fine_group,
-                                  coarse_group,
-                                  keep_vars(fine_group, "excl_compet"),
-                                  keep_vars(fine_group, "only_exact"))
+for (i in 1:length(match_names)) {
+  if (granular[i] == "fine") {
+    matching_models$cutpoints[[i]] <- keep_vars(fine_cuts, matching_models$matching_fields[[i]])
+  } else if (granular [i] == "coarse") {
+    matching_models$cutpoints[[i]] <- keep_vars(coarse_cuts, matching_models$matching_fields[[i]])
+  }
+  else if (granular [i] == "super") {
+    matching_models$cutpoints[[i]] <- keep_vars(super_cuts, matching_models$matching_fields[[i]])
+  }
+}
+
+
+for (i in 1:length(match_names)) {
+  if (granular[i] == "fine") {
+    matching_models$grouping[[i]] <- keep_vars(fine_group, matching_models$matching_fields[[i]])
+  } else if (granular [i] == "coarse") {
+    matching_models$grouping[[i]] <- keep_vars(coarse_group, matching_models$matching_fields[[i]])
+  }
+  else if (granular [i] == "super") {
+    matching_models$grouping[[i]] <- keep_vars(super_group, matching_models$matching_fields[[i]])
+  }
+}
+
+
