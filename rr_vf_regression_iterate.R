@@ -64,12 +64,12 @@ allout <- allout %>%
 formula_df <- tibble(model_name = c("logit_minimal_form",
                                     # "logit_demog_form",
                                     # "logit_tract_form",
-                                    "lme_final_form",
+                                    # "lme_final_form",
                                     "lme_comp"),
                      model_formula = list(turned_out ~ pb + after_pb + as.factor(year) + election_type + (1| VANID) + (1|NYCCD),
                                           # turned_out ~ pb + after_pb  + as.factor(year) + election_type + Race + Female + age + I(age^2)  + (1| VANID) + (1|NYCCD),
                                           # turned_out ~ pb + after_pb  + as.factor(year) + election_type +  Race + Female + age + I(age^2)+ I(age_at_vote < 18) + college_pct + medhhinc_10k +(1| VANID) + (1|NYCCD),
-                                          turned_out ~ pb + after_pb + Race + Female + as.factor(year) + election_type + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + college_pct + majmatch + (1 | VANID) + (1|NYCCD),
+                                          # turned_out ~ pb + after_pb + Race + Female + as.factor(year) + election_type + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + college_pct + majmatch + (1 | VANID) + (1|NYCCD),
                                           turned_out ~ pb + after_pb + Race + Female + as.factor(year) + election_type + compet + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + college_pct + majmatch + (1 | VANID) + (1|NYCCD)
                      )) 
 
@@ -90,9 +90,11 @@ allout <- allout %>%
                                  model_form = model_formula),
                        .f = fit_lmer_model,
                        .progress = TRUE))
+plan(sequential)
 
 allout  %>% mutate(AIC = map_dbl(result, AIC), BIC = map_dbl(result, BIC)) %>% select(match_type, model_name, AIC, BIC) %>%  arrange(match_type, AIC) %>% View()
 glimpse(allout)
+
 
 allout %>% select(match_type, model_name, pblong, result) %>% 
   saveRDS(paste0("data/cleaned_R_results/iter_regress_check", suffix, ".rds"))
@@ -113,6 +115,8 @@ lmers <- allout %>%
   unnest(cols = tidyresult) %>% 
   group_by(match_type, model_name) %>% 
   mutate(pb_effect = estimate[term == "after_pb"])
+
+saveRDS(lmers, file = paste0("data/cleaned_R_results/iter_regress_lmers", suffix, ".rds"))
 
 robust <- lmers %>% 
   filter(group == "fixed" & term != "I(age_at_vote < 18)TRUE" & !str_detect(term, "year") & term != "(Intercept)" & term != "RaceU") %>% 
