@@ -26,7 +26,7 @@ source("rr_regression_functions.R")
 
 ### Creating/loading matched datasets
 
-matching_model <- "Tract fine"
+matching_model <- "Tract super"
 allout <- readRDS(paste0("data/cleaned_R_results/matching_res.RDS"))
 matched_data <- allout %>% filter(match_type == matching_model) %>% pluck("outdf", 1) 
   
@@ -195,14 +195,53 @@ meaneffect <- simcf::extractdata(lme_compet_form, pb_long, na.rm = T) %>%
   margins::dydx(lme_compet, "after_pb", change = c(0,1)) %>% 
   .$dydx_after_pb %>% mean() 
 print(meaneffect)
-all_res <- list(lme_minimal, lme_demog, lme_tract, lme_final, lme_compet)
+
+#----------------------------------------------------------------------------------------------------------------------------------------
+### repeating final reg for compet match ----------------------------------------------------------------------------
+
+matching_model <- "Compet + tract, fine"
+allout <- readRDS(paste0("data/cleaned_R_results/matching_res.RDS"))
+matched_data2 <- allout %>% filter(match_type == matching_model) %>% pluck("outdf", 1) 
+
+# Load and process voterfile - attaching full competitiveness measures
+voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching.rds"))
+# remove previously attached partial competitiveness records
+voterfile <- voterfile %>% 
+  semi_join(matched_data2, by = "VANID") %>% 
+  select(-starts_with("comp_"))
+
+## reload appropriate vf
+vf_compet <- load_vf_compet(unique(voterfile$VANID))
+
+### process, make long, attach competitiveness
+pb_long <- preprocess_lmer(matched_data2)
+
+#### Set reference levels for factor variables 
+pb_long <- create_model_factors(pb_long) 
+
+### remove 2011 + 2015 as non-informative years
+pb_long <- pb_long %>% 
+  filter(! year %in% c(2011, 2015))
+
+lme_compet2 <- glmer(lme_compet_form, data = pb_long, family = binomial(), nAGQ = 0) 
+meaneffect2 <- simcf::extractdata(lme_compet_form, pb_long, na.rm = T) %>% 
+  margins::dydx(lme_compet2, "after_pb", change = c(0,1)) %>% 
+  .$dydx_after_pb %>% mean() 
+print(meaneffect2)
+#----------------------------------------------------------------------------------------------------------------------------------------
+
+all_res <- list(lme_minimal = lme_minimal, lme_demog = lme_demog, lme_tract = lme_tract, lme_final = lme_final, 
+                lme_compet =lme_compet, lme_compet2 = lme_compet2, meaneffect = meaneffect, meaneffect2 = meaneffect2)
 save(all_res, file = "data/cleaned_R_results/main_effects.rds")
 
+# load("data/cleaned_R_results/main_effects.rds")
+# all_res$lme_compet2 <- lme_compet2
+
 library(stargazer)
-stargazer(all_res, 
-          out = "Paper_text/Tables/mainregs.tex", label = "main_results",
+all_res[c("lme_minimal", "lme_demog", "lme_final", "lme_compet", "lme_compet2")] %>% 
+  stargazer(out = "Paper_text/Tables/mainregs.tex", label = "main_results",
           title = "Individual voter turnout difference-in-difference regression results: no interactions",
-          column.labels = c("Minimal", "Demog.", "Tract", "Majority Match", "Compet."),
+          column.labels = c("Minimal", "Demog.", "Tract",  "Compet.", "Matched Comp."),
           order = c("^pb$", "^after\\_pb$", "^election\\_typep$", "^election\\_typepp$",
                     "^RaceB$", "^RaceA$",  "^RaceH$", "^RaceU$", "^Female$",
                     "^age$", "^I\\(age\\^2\\)$", "I\\(age\\_at\\_vote < 18\\)TRUE",
@@ -222,4 +261,7 @@ stargazer(all_res,
           notes.label = "",
           notes.align = "l",
           notes.append = FALSE)
-Q
+
+# more fully interacted model
+# lme_interact_form <- turned_out ~ pb + after_pb*Race + after_pb*majmatch + after_pb*Female + compet + Race + Female + as.factor(year)*Race + as.factor(year)*Female + as.factor(year)*majmatch + election_type + age + I(age^2) + I(age_at_vote < 18) + medhhinc_10k + college_pct + majmatch + (1 | VANID) + (1|NYCCD)
+# lme_interact <- glmer(lme_interact_form, data = pb_long, family = binomial(), nAGQ = 0) 

@@ -71,10 +71,17 @@ attach_competition <- function(df) {# note requires vf_compet to be loaded
 #   df
 # }
 
-create_model_data <- function(df, model_form) {
+create_model_factors <- function(df){
   df <- df %>% 
     mutate(Race = relevel(as.factor(Race), ref = "W"),
-           election_type = relevel(as.factor(election_type), ref = "g")) %>% 
+           election_type = relevel(as.factor(election_type), ref = "g"))
+  df
+}
+
+
+create_model_data <- function(df, model_form) {
+  df <- df %>% 
+    create_model_factors() %>% 
     simcf::extractdata(model_form, ., na.rm = TRUE)
   df
 }
@@ -178,6 +185,7 @@ allout %>% select(match_type, model_name, pblong, result) %>%
 lmers <- allout %>%  
   select(match_type, model_name, tidyresult) %>% 
   unnest(cols = tidyresult)
+saveRDS(lmers, file = "data/cleaned_R_results/iter_regress_lmers_placebo.rds")
 
 robust <- lmers %>% 
   filter(group == "fixed" & term != "I(age_at_vote < 18)TRUE" & !str_detect(term, "year") & term != "(Intercept)") %>% 

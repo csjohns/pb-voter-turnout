@@ -26,7 +26,7 @@ library(cem)
 
 # source("rr_vf_processing.R")
 
-suffix <- "_within_dist"
+suffix <- ""
 voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching", suffix, ".rds")) 
 
 #### Implementing Matching, starting with exact ###-----------------------------------------------------------------------------------------------------------------------------------------------  # 

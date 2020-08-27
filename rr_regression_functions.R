@@ -28,7 +28,7 @@ create_model_factors <- function(df){
 }
 
 create_model_data <- function(df, model_form) {
-  create_model_factors(df) %>% 
+  df <- create_model_factors(df) %>% 
     simcf::extractdata(model_form, ., na.rm = TRUE)
   df
 }

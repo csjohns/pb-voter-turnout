@@ -27,6 +27,7 @@ match_names <- c("Only exact",
                  "incumb. 17",
                  "Group dist",
                  "Dist + tract",
+                 "Dist + compet",
                  "Compet",
                  "Compet + tract, fine",
                  "Compet + tract, coarse",
@@ -50,8 +51,8 @@ super_group <- list(
   p_early = list("0", c("1","2"), c("3", "4"), c("5", "6"), c("7", "8"))
 )
 
-super_cuts <- c(fine_cuts, 
-                age = c(seq(-0.5, 89.5, 5), Inf))
+super_cuts <- fine_cuts
+super_cuts$age <- c(seq(-0.5, 89.5, 5), Inf)
 
 fine_group <- list(
   g_early = list("0",c("1","2", "3"), c("4", "5", "6"), c("7", "8")), 
@@ -96,6 +97,9 @@ varlists <- list(
   dist_tract = names(select(matching_df, Race, agegroup, Sex, 
                             g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008, 
                             white, college, medhhinc, majmatch, match_group)),
+  dist_compet = names(select(matching_df, Race, agegroup, Sex, 
+                            g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008, 
+                            starts_with("comp_"), match_group)),
   compet_only = names(select(matching_df, Race, agegroup, Sex, 
                                 g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008, 
                                 starts_with("comp_"))),
@@ -118,6 +122,7 @@ matching_models$matching_fields <- list(varlists$exact,
                                         varlists$dist_inc17,
                                         varlists$dist_only,
                                         varlists$dist_tract,
+                                        varlists$dist_compet,
                                         varlists$compet_only,
                                         varlists$compet_tract,
                                         varlists$compet_tract,

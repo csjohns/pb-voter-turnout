@@ -33,7 +33,7 @@ source("rr_regression_functions.R")
 
 ### Creating/loading matched datasets
 # source("pub_vf_matching.R")
-suffix <- "_within_dist"
+suffix <- ""
 allout <- readRDS(paste0("data/cleaned_R_results/matching_res", suffix, ".RDS"))
 allout <- allout %>% 
   select(match_type, outdf)
@@ -129,7 +129,7 @@ robust <- lmers %>%
   geom_text(aes(y = -3, label = round(pct39,2)), position = position_dodge(width = .2) , size = 2) +
     # ylim(-5, 5) +
     coord_flip()
-robust
+# robust
 plotly::ggplotly(robust)
 
 ## checking council district distribution across matches

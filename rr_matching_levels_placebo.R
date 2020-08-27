@@ -17,11 +17,12 @@ library(purrr)
 
 
 match_names <- c("Only exact",
-                 "Tract fine",
+                 "Tract super",
                  "Group dist",
                  "Compet + tract, coarse",
                  "All, fine")
-granular <- stringr::str_extract(match_names, ("fine|coarse")) %>% 
+
+granular <- stringr::str_extract(match_names, ("fine|coarse|super")) %>% 
   replace_na("fine")
 
 matching_models <- tibble(match_type = match_names,
@@ -32,6 +33,16 @@ matching_models <- tibble(match_type = match_names,
 
 ## load threshold lists (runn against full matching_df - generated in )
 load("data/cleaned_R_results/cutpoints.Rdata")
+
+
+super_group <- list(
+  g_early = list("0", c("1","2"), c("3", "4"), c("5", "6"), c("7", "8")), 
+  p_early = list("0", c("1","2"), c("3", "4"), c("5", "6"), c("7", "8"))
+)
+
+super_cuts <- fine_cuts
+super_cuts$age <- c(seq(-0.5, 89.5, 5), Inf)
+
 
 fine_group <- list(
   g_early = list("0",c("1","2", "3"), c("4", "5", "6"), c("7", "8")), 
@@ -49,6 +60,9 @@ varlists <- list(
   tract = names(select(matching_df, Race, agegroup, Sex, 
                        g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008, 
                        white, college, medhhinc , majmatch)),
+  tract_super = names(select(matching_df, Race, age, Sex, 
+                             g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008, 
+                             white, college, medhhinc , majmatch)),
   dist_comp = names(select(matching_df, Race, agegroup, Sex, 
                            g_early, g_2008, g_2009, g_2010, p_early, p_2008, p_2009, p_2010, pp_2008, 
                            white, college, medhhinc , majmatch, contains("jenks"))),
@@ -84,7 +98,7 @@ varlists <- list(
                          white, college, medhhinc , majmatch,starts_with("comp_"), match_group)))
 
 matching_models$matching_fields <- list(varlists$exact,
-                                        varlists$tract,
+                                        varlists$tract_super,
                                         varlists$dist_only,
                                         varlists$compet_tract,
                                         varlists$allvars)
@@ -97,6 +111,9 @@ for (i in 1:length(match_names)) {
   } else if (granular [i] == "coarse") {
     matching_models$cutpoints[[i]] <- keep_vars(coarse_cuts, matching_models$matching_fields[[i]])
   }
+  else if (granular [i] == "super") {
+    matching_models$cutpoints[[i]] <- keep_vars(super_cuts, matching_models$matching_fields[[i]])
+  }
 }
 
 
@@ -105,5 +122,8 @@ for (i in 1:length(match_names)) {
     matching_models$grouping[[i]] <- keep_vars(fine_group, matching_models$matching_fields[[i]])
   } else if (granular [i] == "coarse") {
     matching_models$grouping[[i]] <- keep_vars(coarse_group, matching_models$matching_fields[[i]])
+  }
+  else if (granular [i] == "super") {
+    matching_models$grouping[[i]] <- keep_vars(super_group, matching_models$matching_fields[[i]])
   }
 }

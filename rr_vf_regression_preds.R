@@ -27,16 +27,13 @@ makeFEdummies <- function (unit, names = NULL) {
 }
 
 ### load and prep data (copied from rr_vf_regression_final.R) ---------------------
-
-source("create_pb_long.R")
-source("rr_regression_functions.R")
-
 ## load data and process  
 
 ### Creating/loading matched datasets
 
-matching_model <- "Compet + tract, coarse"
-path <- "Paper/Temp_figs/compet_tract_coarse_"
+matching_model <- "Tract super"
+path <- "Paper_text/Figs/"
+save_table <- FALSE
 
 allout <- readRDS(paste0("data/cleaned_R_results/matching_res.RDS"))
 matched_data <- allout %>% filter(match_type == matching_model) %>% purrr::pluck("outdf", 1) 
@@ -45,7 +42,7 @@ matched_data <- allout %>% filter(match_type == matching_model) %>% purrr::pluck
 voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching.rds"))
 # remove previously attached partial competitiveness records
 voterfile <- voterfile %>% 
-  semi_join(matched_data, by = "VANID") %>% 
+  semi_join(matched_data, by = "VANID") %>%
   select(-starts_with("comp_"))
 
 ### Load competitiveness ---------------------------------------------------------------------------------
@@ -106,7 +103,7 @@ logit_base_form <-  turned_out ~ pb + after_pb + compet + election_p+ election_p
   medhhinc_10k + college_pct + majmatch
 
 #calculating PCP
-compare <- data.frame(obs = pb_long_orig$turned_out, pred = as.numeric(fitted(lme_base_simcf)> 0.5))
+compare <- data.frame(obs = pb_long$turned_out, pred = as.numeric(fitted(lme_base_simcf)> 0.5))
 table(compare$obs, compare$pred) %>% prop.table()
 
 library(MASS)
@@ -192,6 +189,13 @@ preds %>%
   theme(axis.title=element_text(size=11))
 ggsave(paste0(path, "base_by_year.pdf"), width = 6, height = 4)
 #ggsave("Paper/Figs/base_by_year.png", width = 6, height = 5)
+
+preds %>% filter(year == 2016) #4.8
+preds %>% filter(year == 2016) #16.2
+preds %>% filter(year == 2014) #16.9
+
+
+
 
 
 ################################################################################################################################################
@@ -326,6 +330,7 @@ logit_income_form <-  turned_out ~ pb + after_pb + compet + election_p + electio
   medhhinc_10k + college_pct + majmatch +
   medhhinc_10k*after_pb +
   medhhinc_10k*year_2009 + medhhinc_10k*year_2010 + medhhinc_10k*year_2012 + medhhinc_10k*year_2013 + medhhinc_10k*year_2014 + medhhinc_10k*year_2016 + medhhinc_10k*year_2016  
+
 
 
 ################################################################################################################################################
@@ -1091,6 +1096,7 @@ ggplot(preds_fd_comb, aes(x = group, y = pe, ymin = lower, ymax =upper, color = 
   geom_pointrange(position = position_dodge(width = .6)) +
   geom_text(aes(y = -0.0025, label = level), hjust = 1, position = position_dodge(width = .6), size = 3) +
   geom_hline(aes(yintercept = 0)) +
+  scale_y_continuous(expand = expansion(mult = c(.3, 0))) +
   scale_alpha_discrete("Year", range = c(.9, .3)) +
   scale_color_discrete(guide = FALSE) +
   labs(x = "", shape = "Year", linetype = "Year",
@@ -1104,49 +1110,56 @@ ggsave(paste0(path, "group_fds_bothyears.pdf"), width = 6.75, height = 6.5)
 
 
 ### Fit statistics for each ------------------------------------------------------------------------------------
+# change in change in prob for each compar:
+preds_fd_plot %>% filter(group == "Income") %>% select(group, level, pe) #1.02
+preds_fd_plot %>% filter(group == "Youth") %>% select(group, level, pe) # 10.49
+preds_fd_plot %>% filter(group == "Majority Race") %>% select(group, level, pe) #1.97
+preds_fd_plot %>% filter(group == "Education") %>% select(group, level, pe) # 4.74
+
+if (save_table){
 library(stargazer)
 
 modelist <- list(lme_base_simcf, lme_race_simcf, lme_majmatch_simcf, lme_gender_simcf, lme_educ_simcf, lme_income_simcf, lme_youth_simcf)
-# saveRDS(modelist, "data/temp/subgroup_res_tractfine.rds")
+saveRDS(modelist, "data/temp/subgroup_res_tractfine.rds")
 # stargazer(lme_base_simcf, lme_race_simcf, lme_gender_simcf, lme_educ_simcf, lme_income_simcf, lme_youth_simcf)
-# stargazer(modelist, 
-#           out = "Paper_text/Tables/subgroups_SG.tex", label = "coefficients",
-#           title = "Individual voter turnout difference-in-difference regression results: including sub-group interactions for `triple-difference' results",
-#           column.labels = c("Base", "*Race", " *Maj. Match", " *Gender", "*Education", "*Income", "*Youth"),
-#           model.numbers = TRUE,
-#           order = c("^pb$", "^after\\_pb$", "^election\\_p$", "^election\\_pp$",
-#                     "^race\\_B$", "^race\\_A$",  "^race\\_H$", "^race\\_U$",
-#                     "^Female$", "^age$", "^I\\(age\\^2\\)$", "I\\(age\\_at\\_vote < 18\\)TRUE", 
-#                     "^college\\_pct$", "^medhhinc\\_10k$", "^majmatchTRUE$",
-#                     "^after\\_pb\\:race\\_B$", "^after\\_pb\\:race\\_A$", "^after\\_pb\\:race\\_H$", "^after\\_pb\\:race\\_U$",
-#                     "^after\\_pb\\:majmatchTRUE$", "^after\\_pb\\:Female$", "^after\\_pb\\:college\\_pct$",
-#                       "^after\\_pb\\:medhhinc\\_10k$", "^youth$", "^after\\_pb\\:youth$"),
-#           covariate.labels = c("PB district", "After PB", "Primary election", "Pres. Primary",
-#                                "Black", "Asian", "Hispanic", "Race Unknown",
-#                                "Female", "Age in years", "Age\\textsuperscript{2}", "18+ at vote", 
-#                                "\\% college educated", "Median HH income", "Majority Race",
-#                                "After PB * Black", "After PB * Asian", "After PB * Hispanic", "After PB * Unknown",
-#                                "After PB * Majority match", "After PB * Female",
-#                                "After PB * \\% college", "After PB * Median HH. inc.", "Age < 30", "After PB * Age < 30"),
-#           dep.var.labels.include = FALSE, dep.var.caption = "",
-#           digit.separator = "", digits = 2, digits.extra = 0, align = TRUE,
-#           intercept.bottom = TRUE, no.space = TRUE,
-#           single.row = TRUE, float.env = "sidewaystable",
-#           column.sep.width = "-30pt",
-#           omit = c("year_20\\d\\d$",
-#                    "year_20\\d\\d\\:|:year_20\\d\\d$"),
-#           add.lines = list(
-#             c("Year fixed effects?", rep("\\multicolumn{1}{c}{Yes}", length(modelist))),
-#               c("Subgroup time trends?", "\\multicolumn{1}{c}{None}", "\\multicolumn{1}{c}{Race}", "\\multicolumn{1}{c}{Maj. Match}", "\\multicolumn{1}{c}{Gender}", "\\multicolumn{1}{c}{Education}", "\\multicolumn{1}{c}{Income}", "\\multicolumn{1}{c}{Youth}")),
-#           # omit.labels = c("Year fixed effects?",
-#           #                 "Year*Covariate interactions?"),
-#           keep.stat = c("n", "aic", "bic", "n"),
-#           star.char = "*", star.cutoffs = 0.05,
-#           notes = "\\parbox[t]{\\textwidth}{\\footnotesize \\textit{Note:} ``Triple difference'' regression results, including interactions conditioning treatment effect by designated covariates, from multilevel mixed effect logistic models of individual turnout in a given election, including random effects for individual and council districts.  Standard errors reported in parentheses and statistical significance at $p<0.05$: $^{*}$.}",
-#           notes.label = "",
-#           notes.align = "l",
-#           notes.append = FALSE
-#           )
-# 
-# 
-# ####  ----
+stargazer(modelist,
+          out = "Paper_text/Tables/subgroups_SG.tex", label = "coefficients",
+          title = "Individual voter turnout difference-in-difference regression results: including sub-group interactions for `triple-difference' results",
+          column.labels = c("Base", "*Race", " *Maj. Match", " *Gender", "*Education", "*Income", "*Youth"),
+          model.numbers = TRUE,
+          order = c("^pb$", "^after\\_pb$", "^election\\_p$", "^election\\_pp$",
+                    "^race\\_B$", "^race\\_A$",  "^race\\_H$", "^race\\_U$", "compet",
+                    "^Female$", "^age$", "^I\\(age\\^2\\)$", "I\\(age\\_at\\_vote < 18\\)TRUE",
+                    "^college\\_pct$", "^medhhinc\\_10k$", "^majmatchTRUE$",
+                    "^after\\_pb\\:race\\_B$", "^after\\_pb\\:race\\_A$", "^after\\_pb\\:race\\_H$", "^after\\_pb\\:race\\_U$",
+                    "^after\\_pb\\:majmatchTRUE$", "^after\\_pb\\:Female$", "^after\\_pb\\:college\\_pct$",
+                      "^after\\_pb\\:medhhinc\\_10k$", "^youth$", "^after\\_pb\\:youth$"),
+          covariate.labels = c("PB district", "After PB", "Primary election", "Pres. Primary", "Competitiveness",
+                               "Black", "Asian", "Hispanic", "Race Unknown",
+                               "Female", "Age in years", "Age\\textsuperscript{2}", "18+ at vote",
+                               "\\% college educated", "Median HH income", "Majority Race",
+                               "After PB * Black", "After PB * Asian", "After PB * Hispanic", "After PB * Unknown",
+                               "After PB * Majority match", "After PB * Female",
+                               "After PB * \\% college", "After PB * Median HH. inc.", "Age < 30", "After PB * Age < 30"),
+          dep.var.labels.include = FALSE, dep.var.caption = "",
+          digit.separator = "", digits = 2, digits.extra = 0, align = TRUE,
+          intercept.bottom = TRUE, no.space = TRUE,
+          single.row = TRUE, float.env = "sidewaystable",
+          column.sep.width = "-30pt",
+          omit = c("year_20\\d\\d$",
+                   "year_20\\d\\d\\:|:year_20\\d\\d$"),
+          add.lines = list(
+            c("Year fixed effects?", rep("\\multicolumn{1}{c}{Yes}", length(modelist))),
+              c("Subgroup time trends?", "\\multicolumn{1}{c}{None}", "\\multicolumn{1}{c}{Race}", "\\multicolumn{1}{c}{Maj. Match}", "\\multicolumn{1}{c}{Gender}", "\\multicolumn{1}{c}{Education}", "\\multicolumn{1}{c}{Income}", "\\multicolumn{1}{c}{Youth}")),
+          # omit.labels = c("Year fixed effects?",
+          #                 "Year*Covariate interactions?"),
+          keep.stat = c("n", "aic", "bic", "n"),
+          star.char = "*", star.cutoffs = 0.05,
+          notes = "\\parbox[t]{\\textwidth}{\\footnotesize \\textit{Note:} ``Triple difference'' regression results, including interactions conditioning treatment effect by designated covariates, from multilevel mixed effect logistic models of individual turnout in a given election, including random effects for individual and council districts.  Standard errors reported in parentheses and statistical significance at $p<0.05$: $^{*}$.}",
+          notes.label = "",
+          notes.align = "l",
+          notes.append = FALSE
+          )
+
+}
+####  ----
