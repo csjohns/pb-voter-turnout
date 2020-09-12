@@ -26,7 +26,10 @@ library(cem)
 
 # source("rr_vf_processing.R")
 
-suffix <- ""
+suffix <- "_placebo"
+if (suffix == "") {set.seed(4142019)} 
+if (suffix == "_within_dist") {set.seed(5092019)}
+if (suffix == "_placebo") {set.seed(5092019)}
 voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching", suffix, ".rds")) 
 
 #### Implementing Matching, starting with exact ###-----------------------------------------------------------------------------------------------------------------------------------------------  # 
@@ -68,6 +71,7 @@ allout <- matching_models %>%
 saveRDS(allout, file = paste0("data/cleaned_R_results/matching_res", suffix, ".rds"))
 
 allout %>% 
-  mutate(n_treat = map_dbl(outdf, ~sum(.$pb))) %>% 
-  select(match_type, n_treat) %>% 
-  arrange(desc(n_treat))
+  mutate(n_treat = map_dbl(outdf, ~sum(.$pb)),
+         n_row = map_dbl(outdf, ~nrow(.))) %>% 
+  select(match_type, n_treat, n_row) %>% 
+  arrange(desc(n_treat)) 

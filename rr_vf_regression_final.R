@@ -26,6 +26,7 @@ source("rr_regression_functions.R")
 
 ### Creating/loading matched datasets
 
+set.seed(05012019)
 matching_model <- "Tract super"
 allout <- readRDS(paste0("data/cleaned_R_results/matching_res.RDS"))
 matched_data <- allout %>% filter(match_type == matching_model) %>% pluck("outdf", 1) 

@@ -33,7 +33,8 @@ makeFEdummies <- function (unit, names = NULL) {
 
 matching_model <- "Tract super"
 path <- "Paper_text/Figs/"
-save_table <- FALSE
+save_table <- TRUE
+set.seed(05102020)
 
 allout <- readRDS(paste0("data/cleaned_R_results/matching_res.RDS"))
 matched_data <- allout %>% filter(match_type == matching_model) %>% purrr::pluck("outdf", 1) 
@@ -821,7 +822,7 @@ preds_youth %>% dplyr::select(after_pb, youth, pe, lower, upper) %>%
        x = "", y = "Predicted probability of Voting", color = "") +
   coord_flip() +
   theme_minimal()
-ggsave(paste0(path, "Paper/Figs/byyouth.pdf"), width = 5, height = 4)
+ggsave(paste0(path, "byyouth.pdf"), width = 5, height = 4)
 
 ### Youth18+ in 2016 -------------------------------------------------------------------------------------------
 sims <- 10000
@@ -1096,7 +1097,7 @@ ggplot(preds_fd_comb, aes(x = group, y = pe, ymin = lower, ymax =upper, color = 
   geom_pointrange(position = position_dodge(width = .6)) +
   geom_text(aes(y = -0.0025, label = level), hjust = 1, position = position_dodge(width = .6), size = 3) +
   geom_hline(aes(yintercept = 0)) +
-  scale_y_continuous(expand = expansion(mult = c(.3, 0))) +
+  scale_y_continuous(expand = expand_scale(mult = c(.3, 0))) +
   scale_alpha_discrete("Year", range = c(.9, .3)) +
   scale_color_discrete(guide = FALSE) +
   labs(x = "", shape = "Year", linetype = "Year",

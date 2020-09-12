@@ -111,6 +111,7 @@ calc_margin_effect <- function(data, model_res){
 ### Creating/loading matched datasets
 # source("pub_vf_matching.R")
 suffix <- "_placebo"
+set.seed(5102020)
 allout <- readRDS(paste0("data/cleaned_R_results/matching_res", suffix, ".RDS"))
 allout <- allout %>% 
   select(match_type, outdf)

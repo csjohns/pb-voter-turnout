@@ -165,6 +165,7 @@ voterfile <- voterfile %>%
 # set downsizing factor
 tot_pb_n <- sum(voterfile$pb) *.075
 # calculate sample sizes, nest df, sample list columsn return to dataframe
+set.seed(4282020)
 vf2 <- voterfile %>% 
   group_by(NYCCD) %>% 
   nest() %>% 
@@ -183,6 +184,5 @@ vf2 <- pbnyc %>%
   select(NYCCD = district, pbyear = voteYear) %>% 
   left_join(vf2, .) %>% 
   ungroup()
-  
   
 saveRDS(vf2, paste0("data/cleaned_R_results/voterfile_for_matching", suffix, ".rds"))

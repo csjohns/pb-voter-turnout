@@ -33,7 +33,9 @@ source("rr_regression_functions.R")
 
 ### Creating/loading matched datasets
 # source("pub_vf_matching.R")
-suffix <- ""
+suffix <- "_within_dist"
+if (suffix == "") {set.seed(4152019)} 
+if (suffix == "_within_dist") {set.seed(5152019)}
 allout <- readRDS(paste0("data/cleaned_R_results/matching_res", suffix, ".RDS"))
 allout <- allout %>% 
   select(match_type, outdf)
