@@ -85,3 +85,51 @@ load_vf_compet <- function(vanids) {
   # return vf_compet
   vf_compet
 }
+
+## function adapted from margins package methods for glmer models (merMod)
+sim_marginal_effects <- function(model, data, iterations = 100, type = "response", variables = "after_pb") {
+  tmpmodel <- model
+  vcov <- vcov(model)
+  iterations = 100
+  if (inherits(model, "merMod")) {
+    coefs <- lme4::fixef(model)
+    # Removing data from model for memory, but S4 class requires "frame"
+    # to be data.frame class --- hacky way of "removing" it
+    model@frame <- model@frame[NULL] 
+  } else {
+    coefs <- coef(model)
+    tmpmodel[["model"]] <- NULL # remove data from model for memory
+  }
+  
+  # check that vcov() only contains coefficients from model
+  if (nrow(vcov) != length(coefs)) {
+    vcov <- vcov[intersect(rownames(vcov), names(coef(model))), intersect(rownames(vcov), names(coef(model)))]
+  }
+  
+  # simulate from multivariate normal
+  coefmat <- MASS::mvrnorm(iterations, coefs, vcov)
+  
+  # estimate AME from from each simulated coefficient vector
+  effectmat <- apply(coefmat, 1, function(coefrow) {
+    tmpmodel@beta <- coefrow <- coefrow
+    means <- colMeans(marginal_effects(model = tmpmodel, data = data, variables = "after_pb"), na.rm = TRUE)
+    
+    if (!is.matrix(means)) {
+      matrix(means, ncol = 1L)
+    }
+    return(means)
+  })
+  # When length(variables) == 1, effectmat is a vector
+  if (!is.matrix(effectmat)) {
+    # Coerce to 1 row matrix
+    effectmat <- matrix(effectmat, nrow = 1)
+    # Rownames are lost in these cases
+    rownames(effectmat) <- paste0("dydx_", variables)
+  }
+  # calculate the variance of the simulated AMEs
+  vc <- var(t(effectmat))
+  variances <- diag(vc)
+  res <- list(meaneffect = mean(effectmat),
+              CI = sqrt(variances)*1.96)
+  res  
+}

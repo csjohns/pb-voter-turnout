@@ -192,14 +192,22 @@ lme_compet <- glmer(lme_compet_form, data = pb_long, family = binomial(), nAGQ =
 
 ### Table / effect output for paper. "mainregs.tex" ------------------------------------------------------------------------------------------------------------------------------------------------------ 
 ## calculating average effect from final model
-meaneffect <- simcf::extractdata(lme_compet_form, pb_long, na.rm = T) %>% 
-  margins::dydx(lme_compet, "after_pb", change = c(0,1)) %>% 
-  .$dydx_after_pb %>% mean() 
-print(meaneffect)
+alleffects <- simcf::extractdata(lme_compet_form, pb_long, na.rm = T) %>%
+  margins::margins(lme_compet, data = ., variables = "after_pb") %>% 
+  (function(x){
+    res <- list()
+    res$effect <- mean(x$dydx_after_pb)
+    res$upper <- res$effect + sqrt(unique(x$Var_dydx_after_pb))*1.96
+    res$lower <- res$effect - sqrt(unique(x$Var_dydx_after_pb))*1.96
+    res
+  })
+print(alleffects)
+
+## trying again with ggeffect
 
 #----------------------------------------------------------------------------------------------------------------------------------------
 ### repeating final reg for compet match ----------------------------------------------------------------------------
-
+set.seed(5022019)
 matching_model <- "Compet + tract, fine"
 allout <- readRDS(paste0("data/cleaned_R_results/matching_res.RDS"))
 matched_data2 <- allout %>% filter(match_type == matching_model) %>% pluck("outdf", 1) 
@@ -225,14 +233,21 @@ pb_long <- pb_long %>%
   filter(! year %in% c(2011, 2015))
 
 lme_compet2 <- glmer(lme_compet_form, data = pb_long, family = binomial(), nAGQ = 0) 
-meaneffect2 <- simcf::extractdata(lme_compet_form, pb_long, na.rm = T) %>% 
-  margins::dydx(lme_compet2, "after_pb", change = c(0,1)) %>% 
-  .$dydx_after_pb %>% mean() 
-print(meaneffect2)
+
+alleffects2 <- simcf::extractdata(lme_compet_form, pb_long, na.rm = T) %>%
+  margins::margins(lme_compet2, data = ., variables = "after_pb") %>% 
+  (function(x){
+    res <- list()
+    res$effect <- mean(x$dydx_after_pb)
+    res$upper <- res$effect + sqrt(unique(x$Var_dydx_after_pb))*1.96
+    res$lower <- res$effect - sqrt(unique(x$Var_dydx_after_pb))*1.96
+    res
+  })
+print(alleffects2)
 #----------------------------------------------------------------------------------------------------------------------------------------
 
 all_res <- list(lme_minimal = lme_minimal, lme_demog = lme_demog, lme_tract = lme_tract, lme_final = lme_final, 
-                lme_compet =lme_compet, lme_compet2 = lme_compet2, meaneffect = meaneffect, meaneffect2 = meaneffect2)
+                lme_compet =lme_compet, lme_compet2 = lme_compet2, alleffects = alleffects, alleffects2 = alleffects2)
 save(all_res, file = "data/cleaned_R_results/main_effects.rds")
 
 # load("data/cleaned_R_results/main_effects.rds")
@@ -240,7 +255,7 @@ save(all_res, file = "data/cleaned_R_results/main_effects.rds")
 
 library(stargazer)
 all_res[c("lme_minimal", "lme_demog", "lme_final", "lme_compet", "lme_compet2")] %>% 
-  stargazer(out = "Paper_text/Tables/mainregs.tex", label = "main_results",
+  stargazer(out = "Paper_text/Tables/mainregs_raw.tex", label = "main_results",
           title = "Individual voter turnout difference-in-difference regression results: no interactions",
           column.labels = c("Minimal", "Demog.", "Tract",  "Compet.", "Matched Comp."),
           order = c("^pb$", "^after\\_pb$", "^election\\_typep$", "^election\\_typepp$",
