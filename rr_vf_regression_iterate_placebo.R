@@ -203,7 +203,7 @@ ggplotly(robust)
 
 compform <- allout$model_formula[allout$model_name == "lme_comp"][[1]]
 meaneffect <- allout %>% 
-  filter(match_type == "All, fine" & model_name == "lme_comp") %>% 
+  filter(match_type == "Tract super" & model_name == "lme_comp") %>% 
   pluck("pblong", 1) %>% 
   drop_na() %>% 
   margins::dydx(allout$result[allout$model_name=="lme_comp"][[1]],  "after_pb", change = c(0,1), allow.new.levels = T) %>% 
