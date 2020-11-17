@@ -25,7 +25,7 @@ library(tidyr)
 library(stringr)
 
 # load custom helper functions
-source("BOE_scraper_funs.R")
+source("R_competitiveness/BOE_scraper_funs.R")
 
 # demo/area extraction code
 # tab <- extract_tables('https://www.vote.nyc.ny.us/downloads/pdf/results/2010/General/20.7NewYork64AssemblyRecap.pdf', pages = 2, columns = 2 )
@@ -145,8 +145,8 @@ errors
 res_all_backup <- res_all
 
 # saving backup of downloaded raw results
-# res_all_backup <- readRDS("boe_dist_pdf_all.Rds")
-# saveRDS(res_all_backup, "boe_dist_pdf_all.Rds")
+# res_all_backup <- readRDS("R_competitiveness/boe_dist_pdf_all.Rds")
+# saveRDS(res_all_backup, "R_competitiveness/boe_dist_pdf_all.Rds")
 
 
 # loading backup
@@ -154,7 +154,7 @@ res_all <- res_all_backup
 
 
 ### Attaching manual data -------------------------------------------------------------
-res_manual <- readRDS("BOE_manual.rds")
+res_manual <- readRDS("R_competitiveness/BOE_manual.rds")
 for (i in seq_along(res_manual)) {
   res_manual[[i]]$year <- names(res_manual)[i]
 }

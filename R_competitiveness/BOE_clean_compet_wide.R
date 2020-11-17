@@ -41,7 +41,7 @@ voterfile <- voterfile  %>%
          ED = PrecinctName)
 
 ### Including competitiveness ---------------------------------------------------------------------------------
-source("rr_compet_cleanup.R")
+source("R_competitiveness/BOE_vf_compet_cleanup.R")
 vf_compet <- readRDS("data/cleaned_R_results/wide_compet.rds")
 names(vf_compet) <- paste0("comp_", names(vf_compet))
 

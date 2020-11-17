@@ -21,8 +21,8 @@ library(stringr)
 
 ## Reference dependent processes (these save .rds files and should not be run every time)
 
-# source(BOE_pdf_scraper_citywide.R) # returns clean results from citywide pdfs
-# source(BOE_pdf_scraper.R) # returns clean results from district level pdfs
+# source("R_competitiveness/BOE_pdf_scraper_citywide.R") # returns clean results from citywide pdfs
+# source("R_competitiveness/BOE_pdf_scraper.R") # returns clean results from district level pdfs
 
 ## Competitiveness function
 
@@ -78,7 +78,7 @@ hist(test$vote_margin_pct_next)
 ## QA: one record with bad winning pct - led to the distinct() in top of funcion call
 # test %>% filter(vote_margin_pct_all > 1) %>% glimpse()
 # res_pdf_district %>% filter(office == "AD" & districtnumber == "51" & year == "2012" & election == "General Election")
-# raw_boe <- readRDS("boe_dist_pdf_all.Rds")
+# raw_boe <- readRDS("R_competitiveness/boe_dist_pdf_all.Rds")
 # raw2012 <- raw_boe[[4]]
 # raw2012 %>% filter(str_detect(office, "Assembly") & str_detect(district, "51") & election == "General Election") %>% 
 #   select(-url) 

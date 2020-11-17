@@ -16,7 +16,7 @@ library(tidyr)
 library(stringr)
 
 # load custom helper functions
-source("BOE_scraper_funs.R")
+source("R_competitiveness/BOE_scraper_funs.R")
 
 
 ## download BO results pages for each election of interest (with csvs): ----

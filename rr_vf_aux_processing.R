@@ -72,7 +72,7 @@ voterfile <- voterfile %>%
 vf_compet <- readRDS("data/cleaned_R_results/wide_compet_clean.rds")
 
 # load presidential results
-source("BOE_pres_process.R")
+source("R_competitiveness/BOE_pres_process.R")
 
 ## attach pres, make long w/election & year
 vf_compet <- vf_compet %>% 

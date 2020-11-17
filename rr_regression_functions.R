@@ -60,7 +60,7 @@ load_vf_compet <- function(vanids) {
     filter(VANID %in% vanids)
   
   # load presidential results
-  source("BOE_pres_process.R")
+  source("R_competitiveness/BOE_pres_process.R")
   
   ## attach pres, make long w/election & year
   vf_compet <- vf_compet %>% 

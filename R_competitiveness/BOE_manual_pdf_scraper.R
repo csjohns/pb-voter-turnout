@@ -1,7 +1,7 @@
 ## BOE manual file fixing
 ## code copied from BOE_pdf_scraper.R
 
-source("BOE_scraper_funs.R")
+source("R_competitiveness/BOE_scraper_funs.R")
 
 manual <- readr::read_csv("data/BOE_raw/BOE_manual.csv") %>% 
   select(-X1)
@@ -47,5 +47,5 @@ res_year[["2013"]] <- bind_rows(res_year[["2013"]], tot_votes2013)
 res_year[["2010"]]$district <- "13th Congressional District"
 res_year[["2013"]]$district <- "36th City Council District"
 
-saveRDS(res_year,"BOE_manual.rds")
+saveRDS(res_year,"R_competitiveness/BOE_manual.rds")
 

@@ -16,7 +16,7 @@ library(tidyr)
 library(stringr)
 
 # load custom helper functions
-source("BOE_scraper_funs.R")
+source("R_competitiveness/BOE_scraper_funs.R")
 # tab <- extract_tables('https://www.vote.nyc.ny.us/downloads/pdf/results/2010/General/20.7NewYork64AssemblyRecap.pdf', pages = 2, columns = 2 )
 # head(tab)
 # 
