@@ -15,7 +15,7 @@
 # 3) update if  pb_2013_new == 1, then pb_2013 == 1 == 0 or NA, fill with 
 # check to see how many actually are different
 
-pb23_13 <- read.delim("new23/2013pbnycD23voters20180301-19023894851.txt", as.is = TRUE)
+pb23_13 <- read.delim("../new23/2013pbnycD23voters20180301-19023894851.txt", as.is = TRUE)
 
 pb23_13 <- pb23_13 %>% 
   #select(-CityName, -DateReg) %>% 
@@ -50,7 +50,7 @@ pb23_13 <- pb23_13 %>%
 
 
 ################ REPLICATING FOR THE 2016 VOTERS ######--------------------------------------------------------------------------------------
-pb23_16 <- read.delim("new23/2016pbnycD23voters20180301-20797589892.txt", as.is = TRUE)
+pb23_16 <- read.delim("../new23/2016pbnycD23voters20180301-20797589892.txt", as.is = TRUE)
 
 pb23_16 <- pb23_16 %>% 
   #select(-CityName, -DateReg) %>% 
@@ -105,7 +105,7 @@ pb <- pb_update %>%
 
 ### Imputing pb districts for those that are NA, replacing NA with the voter's current district
 ###   *IF* that district was a valid PB district at the time of their first vote.
-pbnyc_history <- read.csv(file = "pbnyc_district_votes.csv", as.is = TRUE) %>% 
+pbnyc_history <- read.csv(file = "../pbnyc_district_votes.csv", as.is = TRUE) %>% 
   rename(pbdistrict = district) %>%
   group_by(pbdistrict) %>%
   summarize(start_year = min(voteYear)) %>% 
