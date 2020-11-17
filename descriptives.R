@@ -1,141 +1,17 @@
 library(tidyverse)
-library(data.table)
 library(lubridate)
 library(gridExtra)
 library(grid)
 library(glue)
 library(scales)
 
-source("credentials.R") # loads the access credentials
-source("dbDownload.R")
+#### Load full voterfile data
+# voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching.rds"))
+voterfile <- readRDS("data/cleaned_R_results/voterfile_full_clean.rds")
 
-stringNAs <- function(x){
-  ifelse(x, "", NA)
-}
-# 
-# conv19c <- function(s, ft = "%m/%d/%y"){
-#   as.Date(format(as.Date(s,format=ft), "19%y%m%d"), "%Y%m%d")
-# }
-### Load PB data ### -------------------------------------------------------------------------------------
-
-pb <- dbDownload(table = "pb", username = username, password = password, dbname = db.name, host = hostname, port = port)
-rm(password, username, hostname, db.name, port) # if you want to remove the credentials from your environment 
-# load("pb_orig.Rdata")
-#pb <- pb_orig 
-#rm(pb_orig)
-pb <- pb %>% select(-DWID) %>% 
-  filter(DoR != "" & !is.na(DoR)) %>% 
-  mutate_at(vars(starts_with("pb_2")), replace_na, 0) # this line is to deal with the fact that the row appended dist 23 voters (who didn't otherwise exist)
-
-pb <- pb %>% 
-  mutate(DoB = mdy(DoB),
-         pb = 1,
-         countycode = recode(County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085")) %>%
-  mutate(countycode = ifelse(countycode %in% c("005", "047", "061", "081", "085"), countycode, NA),
-         tract = paste0(countycode, str_pad(CensusTract, 6, "left", "0")))
-         
-# limit to only 23/39 and 2016 districts
-pbnyc <- read.csv(file = "pbnyc_district_votes.csv", as.is = TRUE)
-pb2016 <- pbnyc %>% filter(districtCycle == 1 & voteYear == 2016) 
-
-### Load full voterfile data ### -------------------------------------------------------------------------------------
-### Limit it to only non-PB districts and VANIDS
-
-pbdistricts <- unique(pbnyc$district)
-rm(pbnyc, pb2016)
-
-## loading full voter file
-con <- dbConnect(MySQL(), username = username, password = password, dbname = db.name, host = hostname, port = port) #establish connection to DB
-voterfile <- glue_sql("SELECT * FROM voterfile52018 
-                      WHERE RegistrationStatusName NOT IN ('Applicant', 'Dropped', 'Unregistered')
-                      AND DateReg <> ''",
-                      #nyccds = pbdistricts,
-                      .con = con) %>% 
-  dbGetQuery(con, .)
-dbDisconnect(con)
-rm(password, username, hostname, db.name, port) # if you want to remove the credentials from your environment 
-save(voterfile, file = "voterfile_noPB.Rdata ")
-
-voterfile <- voterfile %>% 
-  filter(DateReg != "" & !`Voter File VANID` %in% pb$VANID) 
-
-
-
-# pbdistricts <- c(3, 5, 6, 7, 8, 10, 11, 12, 15, 16, 17, 19, 20, 21, 22, 23, 24, 26, 27, 29, 30,
-#                31, 32, 33, 34, 35, 36, 38, 39, 40, 41, 44, 45, 47, 49)
-
-# pbsampledists <- c(39, 23, 30, 35, 36, 40, "NYC")
-
-# Retain only "Registered Active" and "Registered Inactive"
-voterfile <- as.data.table(voterfile)
-voterfile <- voterfile[RegistrationStatusName == "Registered Active" | RegistrationStatusName == "Registered Inactive"]
-
-voterfile <- voterfile  %>%
-  rename(Ethnicity = EthnicCatalistName,
-         DoB = DOB,
-         DoR = DateReg,
-         RegStatus = RegistrationStatusName,
-         County = CountyName,
-         #City = CityName,
-         Lat = Latitude,
-         Long = Longitude,
-         NYCCD = CityCouncilName,
-         CensusTract = CensusTractName,
-         VANID = `Voter File VANID`,
-         ED = PrecinctName)
-
-voterfile <- voterfile  %>%
-  mutate(County = recode(County, Bronx = "BRONX" , Kings = "KINGS", `New York` = "NEW YORK", Queens = "QUEENS", Richmond = "RICHMOND")) %>% 
-  mutate(DoB = mdy(DoB))
-
-voterfile <- voterfile %>% 
-  mutate(pbdist = NYCCD %in% pbdistricts)
-
-names(voterfile) <- names(voterfile) %>% 
-  str_replace("General", "g_20") %>%
-  str_replace("PresidentialPrimary", "pp_20") %>%
-  str_replace("Primary", "p_20")
-
-## recoding vote tallies to a binary voted/not voted indicator
-convLogicVote <- function(x){as.numeric(x != "")}   #function to create binary for any case with any non-empty string
-
-voterfile <- voterfile %>% 
-  mutate_at(vars(starts_with("p_")), funs(convLogicVote)) %>% 
-  mutate_at(vars(starts_with("g_")), funs(convLogicVote)) %>% 
-  mutate_at(vars(starts_with("pp_")), funs(convLogicVote)) 
-
-# Add age
-voterfile <- voterfile %>% 
-  mutate(age = year(Sys.Date()) - year(DoB))
-
-# Merge in census tract data
-#source("censustables.R")
-load("data/cleaned_R_results/census.Rdata")
-census <- race %>% 
-  left_join(inc, by = "tract") %>% 
-  left_join(educ, by = "tract")
-
-voterfile <- voterfile %>% mutate(countycode = recode(County, BRONX = "005", KINGS = "047", `NEW YORK` = "061", QUEENS = "081", RICHMOND = "085")) %>%
-  mutate(countycode = ifelse(countycode %in% c("005", "047", "061", "081", "085"), countycode, NA),
-         tract = paste0(countycode, str_pad(CensusTract, 6, "left", "0")))
-
-voterfile <- voterfile %>% 
-  left_join(census, by = "tract") %>% 
-  as.data.table()
-
-convLogicVote <- function(x){as.numeric(x != "")}   #function to create binary for any case with any non-empty string
-
-pb <- pb %>% mutate(pb = ifelse(is.na(pb), 0, pb))
-pb <- pb %>% 
-  mutate_at(vars(starts_with("p_")), funs(convLogicVote)) %>% 
-  mutate_at(vars(starts_with("g_")), funs(convLogicVote)) %>% 
-  mutate_at(vars(starts_with("pp_")), funs(convLogicVote)) %>% 
-  mutate(age =  year(Sys.Date()) - year(DoB))
-
-
-pb <- pb %>% 
-  left_join(census, by = "tract") 
-# Total registered voters == 4,946,176
+# filter to appropriate population
+compare_districts <- c(23, 39, 30,35,36,40)
+pbdistricts <- readRDS("data/cleaned_R_results/pbdistricts.rds")
 
 #### Turnout Registered Voters ####
 
@@ -235,7 +111,8 @@ turnout <- voterfile %>%
 ### PB Voters
 
 
-turnout <- pb %>% 
+turnout <- voterfile %>% 
+  filter(pb ==1) %>% 
   summarize(tot = n(),
             g_2017 = sum(g_2017, na.rm = TRUE)/tot,
             g_2016 = sum(g_2016, na.rm = TRUE)/tot,
@@ -352,7 +229,8 @@ p2 <- voterfile %>%
         axis.text.x=element_blank(),
         axis.ticks.x=element_blank())
 
-p3 <- ggplot(pb, aes(x = age)) +
+p3 <- voterfile %>% filter(pb == 1) %>% 
+  ggplot(aes(x = age)) +
   geom_histogram(bins = 15, fill = "#F8766D") +
   labs(x = "Age",
        y = "",
@@ -373,7 +251,6 @@ grid.arrange(rbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(p3), size = "last"
 dev.off()
 
 ## College degree
-##### still working here ####
 p1 <- ggplot(voterfile, 
                     aes(x = college/100)) +
   geom_histogram(bins = 15, fill = "#619CFF") +
@@ -413,7 +290,8 @@ p2 <- voterfile %>%
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
-p3 <- ggplot(pb, aes(x = college/100)) +
+p3 <-  voterfile %>% filter(pb == 1) %>% 
+  ggplot(aes(x = college/100)) +
   geom_histogram(bins = 15, fill = "#F8766D") +
   labs(x = "College degree, tract (%)",
        y = "",
@@ -474,7 +352,8 @@ p2 <- voterfile %>%
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
-p3 <- ggplot(pb, aes(x = medhhinc)) +
+p3 <-  voterfile %>% filter(pb == 1) %>% 
+  ggplot(aes(x = medhhinc)) +
   geom_histogram(bins = 15, fill = "#F8766D") +
   labs(x = "Median Household Income ($)",
        y = "",
@@ -537,7 +416,7 @@ p2 <- voterfile %>%
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
 
-p3 <- pb %>% 
+p3 <- voterfile %>% filter(pb == 1) %>% 
   filter(Race != "N") %>% 
   ggplot(aes(x = Race)) +
   geom_bar(fill = "#F8766D") +
