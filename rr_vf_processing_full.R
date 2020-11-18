@@ -122,13 +122,22 @@ voterfile <- voterfile %>%
   left_join(match_groups, by = c(effective_district = "NYCCD") ) %>% 
   mutate(match_group = replace_na(match_group, 4)) #create a group for the excluded control districts
 
+### de-identify
+# remove single duplicated record (randomly select census tract)
+voterfile <- voterfile %>% 
+  group_by(VANID) %>% 
+  sample_n(1)
+voterfile$newids <- sample(1:nrow(voterfile), size = nrow(voterfile), replace = FALSE)
+voterfile$VANID <- voterfile$newids
+voterfile$newids <- NULL
+
 ### save clean file to disk ----------------------
-saveRDS(voterfile, "data/cleaned_R_results/voterfile_full_clean.rds")
+saveRDS(voterfile, "data/cleaned_R_results/voterfile_full_clean_deid.rds")
 
 ### create files for each of the primary matching comparisons ---------------------------
 
 # load processed voterfile
-# voterfile <- readRDS("data/cleaned_R_results/voterfile_full_clean.rds")
+# voterfile <- readRDS("data/cleaned_R_results/voterfile_full_clean_deid.rds")
 
 # filter to appropriate population
 compare_districts <- c(23, 39, 30,35,36,40)

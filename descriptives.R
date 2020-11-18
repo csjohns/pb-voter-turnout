@@ -7,7 +7,7 @@ library(scales)
 
 #### Load full voterfile data
 # voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching.rds"))
-voterfile <- readRDS("data/cleaned_R_results/voterfile_full_clean.rds")
+voterfile <- readRDS("data/cleaned_R_results/voterfile_full_clean_deid.rds")
 
 # filter to appropriate population
 compare_districts <- c(23, 39, 30,35,36,40)

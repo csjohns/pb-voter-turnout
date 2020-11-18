@@ -6,7 +6,7 @@ library(glue)
 library(lubridate)
 library(stringr)
 
-voterfile <- readRDS("data/cleaned_R_results/voterfile_full_clean.rds")
+voterfile <- readRDS("data/cleaned_R_results/voterfile_full_clean_deid.rds")
 
 
 median_excl_99  <-  function(x) {
