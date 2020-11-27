@@ -41,13 +41,21 @@ matched_data <- allout %>% filter(match_type == matching_model) %>% purrr::pluck
 
 # Load and process voterfile - attaching full competitiveness measures
 voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching.rds"))
-# remove previously attached partial competitiveness records
+
+# keep matched
 voterfile <- voterfile %>% 
-  semi_join(matched_data, by = "VANID") %>%
+  semi_join(matched_data, by = "VANID")
+
+# pull out previously attached partial competitiveness records to sreshape 
+vf_compet <- voterfile %>% 
+  select(VANID, starts_with("comp_"))
+
+voterfile <- voterfile %>% 
   select(-starts_with("comp_"))
 
-### Load competitiveness ---------------------------------------------------------------------------------
-vf_compet <- load_vf_compet(unique(voterfile$VANID))
+
+### Load/reshape competitiveness ---------------------------------------------------------------------------------
+vf_compet <- reshape_vf_compet(vf_compet)
 
 ### process, make long, attach competitiveness
 pb_long <- preprocess_lmer(matched_data)
@@ -62,10 +70,6 @@ pb_long <- pb_long %>%
 
 #### Make FE Dummies
 ## Replicating Chris Adolph's makeFEdummies, from simcf package (not on CRAN, available from http://faculty.washington.edu/cadolph/?page=60)
-
-## setting up pb_long from vf_analysis again
-
-
 
 pb_long_orig <- pb_long # making a copy in case all is f'ed up and don't want to rerun all processing code
 

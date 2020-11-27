@@ -33,13 +33,20 @@ matched_data <- allout %>% filter(match_type == matching_model) %>% pluck("outdf
   
 # Load and process voterfile - attaching full competitiveness measures
 voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching.rds"))
-# remove previously attached partial competitiveness records
+
+# keep matched
 voterfile <- voterfile %>% 
-  semi_join(matched_data, by = "VANID") %>% 
+  semi_join(matched_data, by = "VANID")
+
+# pull out previously attached partial competitiveness records to sreshape 
+vf_compet <- voterfile %>% 
+  select(VANID, starts_with("comp_"))
+
+voterfile <- voterfile %>% 
   select(-starts_with("comp_"))
 
-### Load competitiveness ---------------------------------------------------------------------------------
-vf_compet <- load_vf_compet(unique(voterfile$VANID))
+### Load/reshape competitiveness ---------------------------------------------------------------------------------
+vf_compet <- reshape_vf_compet(vf_compet)
 
 ### process, make long, attach competitiveness
 pb_long <- preprocess_lmer(matched_data)
@@ -47,125 +54,9 @@ pb_long <- preprocess_lmer(matched_data)
 #### Set reference levels for factor variables 
 pb_long <- create_model_factors(pb_long) 
 
-### remove 2011 + 2015 as non-informative years
+### remove 2011 + 2015 as non-informative years (no substantially city-wide elections)
 pb_long <- pb_long %>% 
   filter(! year %in% c(2011, 2015))
-
-
-####  Model explorations ---------------------------------------------------------------------------------------------------------------------------
-
-## looking at a very basic linear regression predicting turnout
-# bas_log <- lm(turned_out ~ pb + after_pb + as.factor(year) + election_type , data = pb_long)
-# summary(bas_log)
-# 
-# bas_log_all <- lm(turned_out ~ pb + after_pb + as.factor(year) + election_type +
-#                     Female + Race + age + medhhinc + white + college + majmatch, data = pb_long)
-# summary(bas_log_all) ## R-Squared = .31!
-# 
-# ## Quick comparison of linear and logit models with covariates - this is mostly just to give a sense of the relative magnitude of effects in the two model approaches
-# covar_formula <- turned_out ~ pb + after_pb + as.factor(year) +  election_type  + Race + age + Female + medhhinc + college + white + majmatch
-# covar_logit <- pb_long %>% glm(covar_formula, data = ., family = binomial())
-# summary(covar_logit)
-# dydx(pb_long, covar_logit, "after_pb", change = c(0,1))[[1]] %>% mean
-# covar_lm <- lm(covar_formula, data = pb_long)
-# summary(covar_lm)
-# dydx(pb_long, covar_lm, "after_pb", change = c(0,1))[[1]] %>% mean
-# 
-# ##### Trying with lmer getting random effects for individuals
-# 
-# logit_lme_f <- turned_out ~ pb + after_pb + Race + as.factor(year) + election_type + age + medhhinc + white + college + majmatch + (1 | VANID)
-# lme_logit <- glmer(logit_lme_f, data = pb_long, family = binomial(), nAGQ = 0)
-# summary(lme_logit)
-# 
-# ## Comparing inclusion of NYCDD random effects - fit is improved by including NYCDD
-# 
-# logit_full_fm <- turned_out ~ pb + after_pb + Race + Female + as.factor(year) + election_type + age + medhhinc + white + college + majmatch + (1 | VANID) + (1|NYCCD)
-# lme_full <-  glmer(logit_full_fm, data = pb_long, family = binomial(), nAGQ = 0)
-# summary(lme_full)
-# 
-# AIC(lme_full)
-# AIC(lme_logit)
-# BIC(lme_full)
-# BIC(lme_logit)
-# 
-# AICcollege <- AIC(lme_full)
-# BICcollege <- BIC(lme_full)
-# 
-# dydx( simcf::extractdata(logit_full_fm, pb_long, na.rm = T), lme_full, "after_pb", change = c(0,1))[[1]] %>% mean
-# 
-# ## testing not including college
-# logit_full_fm_nocollege <- turned_out ~ pb + after_pb + as.factor(year) + election_type + Race + age + medhhinc + white + majmatch + (1 | VANID) + (1|NYCCD)
-# lme_full_ncollege <-  glmer(logit_full_fm_nocollege, data = pb_long, family = binomial(), nAGQ = 0)
-# AIC(lme_full_ncollege)
-# AIC(lme_full)
-# BIC(lme_full_ncollege)
-# BIC(lme_full)
-# 
-# # dydx(pb_long, lme_full_ncollege, "after_pb", change = c(0,1))[[1]] %>% mean
-# ## all this points to keeping college in the analyis. Not sure why I originally dropped it...
-# 
-# ## testing including non-linear effects for age and medhhinc (as suggested by plotting)
-# logit_age2_form <- turned_out ~ pb + after_pb + Race + Female + as.factor(year) + election_type + age + I(age^2) + medhhinc + white + college + majmatch + (1 | VANID) + (1|NYCCD)
-# logit_med2_form  <-  turned_out ~ pb + after_pb + Race + Female + as.factor(year) + election_type + age + I(medhhinc^2) + medhhinc + white + college + majmatch + (1 | VANID) + (1|NYCCD)
-# logit_lmed_form  <-  turned_out ~ pb + after_pb + Race + Female + as.factor(year) + election_type + age + log(medhhinc) + white + college + majmatch + (1 | VANID) + (1|NYCCD)
-# 
-# lme_age2 <- glmer(logit_age2_form, data = pb_long, family = binomial(), nAGQ = 0)
-# lme_med2 <- glmer(logit_med2_form, data = pb_long, family = binomial(), nAGQ = 0)
-# lme_lmed <- glmer(logit_lmed_form, data = pb_long, family = binomial(), nAGQ = 0)
-# 
-# AIC(lme_full)
-# AIC(lme_age2)
-# AIC(lme_med2)
-# AIC(lme_lmed)
-# 
-# BIC(lme_full)
-# BIC(lme_age2)
-# BIC(lme_med2)
-# BIC(lme_lmed)
-# 
-# #incl white?:
-# lme_nowhite_form <- turned_out ~ pb + after_pb + Race + Female + as.factor(year) + election_type + age + I(age^2) + medhhinc + college + majmatch + (1 | VANID) + (1|NYCCD)
-# lme_nowhite <- glmer(lme_nowhite_form, data = pb_long, family = binomial(), nAGQ = 0)
-# 
-# AIC(lme_age2)
-# AIC(lme_nowhite)
-# BIC(lme_age2)
-# BIC(lme_nowhite)
-# 
-# ## % white isn't contributing, much once majority race is included (esp. since matched on nonwhite)
-# ##  BIC and AIC  agree that it does not improve the model
-# table(lme_age2@frame$turned_out, fitted(lme_age2)>= .5)
-# table(lme_age2@frame$turned_out == as.numeric(fitted(lme_age2)>= .5)) %>% prop.table() #---> 85% pcp
-# 
-# table(lme_nowhite@frame$turned_out, fitted(lme_nowhite)>= .5)
-# table(lme_nowhite@frame$turned_out == as.numeric(fitted(lme_nowhite)>= .5)) %>% prop.table() #---> 85% pcp
-# ## Percent correctly predicted is basically the same for the two models.
-# 
-# #incl gender?:
-# lme_nosex_form <- turned_out ~ pb + after_pb + Race + as.factor(year) + election_type + age + I(age^2) + medhhinc + college + majmatch + (1 | VANID) + (1|NYCCD)
-# lme_nosex <- glmer(lme_nosex_form, data = pb_long, family = binomial(), nAGQ = 0)
-# 
-# AIC(lme_nowhite)
-# AIC(lme_nosex)
-# BIC(lme_nowhite)
-# BIC(lme_nosex)
-# 
-# ## Both AIC and BIC actually encourage omitting gender from the modle - however, it's not
-# ## a huge difference and I want to be able to include gender in the the subgroup breakdowns,
-# ## so should include it for comparability
-# 
-# # Age at vote eligibility flag
-# 
-# logit_elig_fm <- turned_out ~ pb + after_pb + Race + Female + as.factor(year) + election_type + age + I(age^2) + I(age_at_vote < 18) + medhhinc  + college + majmatch + (1 | VANID) + (1|NYCCD)
-# lme_elig <-  glmer(logit_elig_fm, data = pb_long, family = binomial(), nAGQ = 0)
-# summary(lme_elig)
-# 
-# AIC(lme_age2)
-# AIC(lme_elig)
-# BIC(lme_age2)
-# BIC(lme_elig)
-# 
-# ## including flag for age at vote makes a huge improvement in model fit. Use it!
 
 ### Models and output for paper ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ### LMER base model, no covars:  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -214,13 +105,20 @@ matched_data2 <- allout %>% filter(match_type == matching_model) %>% pluck("outd
 
 # Load and process voterfile - attaching full competitiveness measures
 voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching.rds"))
-# remove previously attached partial competitiveness records
+
+# keep matched
 voterfile <- voterfile %>% 
-  semi_join(matched_data2, by = "VANID") %>% 
+  semi_join(matched_data, by = "VANID")
+
+# pull out previously attached partial competitiveness records to sreshape 
+vf_compet <- voterfile %>% 
+  select(VANID, starts_with("comp_"))
+
+voterfile <- voterfile %>% 
   select(-starts_with("comp_"))
 
-## reload appropriate vf
-vf_compet <- load_vf_compet(unique(voterfile$VANID))
+### Load/reshape competitiveness ---------------------------------------------------------------------------------
+vf_compet <- reshape_vf_compet(vf_compet)
 
 ### process, make long, attach competitiveness
 pb_long <- preprocess_lmer(matched_data2)

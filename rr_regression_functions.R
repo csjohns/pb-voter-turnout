@@ -54,19 +54,7 @@ calc_margin_effect <- function(data, model_res){
 }
 
 
-load_vf_compet <- function(vanids) {
-  
-  vf_compet <- readRDS("data/cleaned_R_results/wide_compet_clean.rds") %>% 
-    filter(VANID %in% vanids)
-  
-  # load presidential results
-  source("R_competitiveness/BOE_pres_process.R")
-  
-  ## attach pres, make long w/election & year
-  vf_compet <- vf_compet %>% 
-    rename_all(~str_remove(., "comp_")) %>% 
-    attach_pres(pres_wide) 
-  
+reshape_vf_compet <- function(vf_compet) {
   names(vf_compet) <- str_replace(names(vf_compet), "general", "g")
   names(vf_compet) <- str_replace(names(vf_compet), "primary", "p")
   
@@ -76,7 +64,7 @@ load_vf_compet <- function(vanids) {
     separate(election, c("year", "election_type")) %>% 
     mutate(year = as.numeric(year)) %>% 
     group_by(year, election_type) %>% 
-    mutate(compet = replace_na(compet, mean(compet[compet >0], na.rm = T))) %>% 
+    mutate(compet = replace_na(compet, mean(compet[compet >0], na.rm = T))) %>% # replacing voters' election *w/o match in BOE files* with mean
     ungroup()
   
   # replace years where that person have an election w/NA

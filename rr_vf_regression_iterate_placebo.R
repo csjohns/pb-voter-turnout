@@ -2,7 +2,7 @@
 ##############################################################################################################################
 ###
 ### NYC PB Voters Project 
-### Iterating regressions from repeated match list
+### Iterating regressions from repeated match list - placebo only
 ### Carolina Johnson
 ### 
 ### 1. Attach full set of competitiveness data for control in regression
@@ -122,18 +122,23 @@ allout <- allout %>%
 
 uniquevanids <- sapply(allout$outdf, function(x){unique(x$VANID)}) %>% unlist() %>% unique() 
 
-
 # Load and process voterfile - attaching full competitiveness measures
-voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching", suffix, ".rds"))
-# remove previously attached partial competitiveness records
+voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching", suffix, ".rds")) 
+# keep matched
 voterfile <- voterfile %>% 
-  filter(VANID %in% uniquevanids) %>% 
+  filter(VANID %in% uniquevanids) 
+
+# pull out previously attached partial competitiveness records to reshape 
+vf_compet <- voterfile %>% 
+  select(VANID, starts_with("comp_"))
+
+voterfile <- voterfile %>% 
   select(-starts_with("comp_"), -pp_2016)
 
 
 ### Load competitiveness ---------------------------------------------------------------------------------
-vf_compet <- load_vf_compet(uniquevanids)
-  
+vf_compet <- reshape_vf_compet(vf_compet)
+
   
 ## create pb_longs (w/compet)
 # .vf_compet <- vf_compet %>% 
@@ -181,7 +186,7 @@ allout <- allout %>%
          AIC = map_dbl(result, AIC),
          BIC = map_dbl(result, BIC))
 allout %>% select(match_type, model_name, pblong, result) %>% 
-  saveRDS("D:/Gwyn/Carolina/PBturnout_iter_regress_check_placebo.rds")
+  saveRDS("data/cleaned_R_results/iter_regress_check_placebo.rds")
 
 lmers <- allout %>%  
   select(match_type, model_name, tidyresult) %>% 
