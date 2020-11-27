@@ -39,10 +39,10 @@ voterfile <- voterfile[!RegistrationStatusName %in% c('Applicant', 'Dropped', 'U
 
 set.seed(1851)
 ## re-geocode based on latlong to assign voters missing council district to NYCCD - ED as last resort
-source("vf_gis_nyccdmatch.R")
+source("R_data_collection/vf_gis_nyccdmatch.R")
 
 ## re-geocode based on ED to assign voters missing NYCCD; then assign to pb districts based on PB logic
-source("pb_cleanup_addnyccd_foranalysis.R")
+source("R_data_collection/pb_cleanup_addnyccd_foranalysis.R")
 
 
 # limit pb file to  only 23/39 and 2016 districts, or voters who first voted in 2012
@@ -106,7 +106,7 @@ voterfile <- bind_rows(pb, voterfile)
 voterfile <- voterfile %>% mutate(pb = replace_na(pb, 0))
 
 ### Downstream processing, adding auxiliary info - pulled out to standardize across different match_specs ---------------------
-source("rr_vf_aux_processing.R")
+source("R_data_collection/rr_vf_aux_processing.R")
 voterfile <- voterfile %>% 
   select(-CensusTract, -CensusTractUpdate, -countycodeupdate, -countycode, -County, -tractcode)
 
