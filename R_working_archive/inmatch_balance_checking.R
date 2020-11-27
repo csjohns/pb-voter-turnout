@@ -139,7 +139,7 @@ for (r in c("A", "B", "W")) {
 }
   
   
-  bal.tabtTreat = "inmatch", data = .)
+  bal.tab(treat = "inmatch", data = .)
   head(., 2)
   
   extractBal()
