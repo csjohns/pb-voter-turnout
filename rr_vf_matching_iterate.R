@@ -24,7 +24,7 @@ library(tidyr)
 library(MatchIt)
 library(cem)
 
-# source("rr_vf_processing.R")
+# source("rr_vf_processing_full.R")
 
 suffix <- "_placebo"
 if (suffix == "") {set.seed(4142019)} 

@@ -4,6 +4,7 @@
 *.RData
 *.Rdata
 *.rds
+*.Rds
 .Ruserdata
 *.Rproj
 credentials*.R

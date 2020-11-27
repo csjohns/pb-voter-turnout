@@ -1,3 +1,4 @@
+### Helper functions and naming dataframe for match balance comparison for online appendix
 
 #### var names -------------------
 
@@ -32,7 +33,7 @@ vnames <- data.frame(old = varlist, new = varlist) %>%
 
 
 
-### matching functions  ------------------
+### matching balance check  functions  ------------------
 calc_pb_balance <- function(voterfile = voterfile, matched, fields) {
   df <- voterfile %>% 
     select(VANID, pb, fields) %>% 
