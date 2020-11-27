@@ -80,9 +80,9 @@ comb <- comb %>%
   mutate(office = case_when(office == "State Senator" ~ "SD",
                             office == "Member of the Assembly" ~ "AD",
                             TRUE ~ office))
-saveRDS(comb, "combined2017res.Rds")
+saveRDS(comb, "R_competitiveness/combined2017res.Rds")
 ## extract all a href tags
 ## filter to containing "*EDLevel.csv"
 # then loop through load & r bind each of those csv urls
 
-comb17 <- readRDS("combined2017res.Rds")
+comb17 <- readRDS("R_competitiveness/combined2017res.Rds")
