@@ -195,8 +195,8 @@ preds %>%
 ggsave(paste0(path, "base_by_year.pdf"), width = 6, height = 4)
 #ggsave("Paper/Figs/base_by_year.png", width = 6, height = 5)
 
-preds %>% filter(year == 2016) #4.8
-preds %>% filter(year == 2017) #16
+preds %>% filter(year == 2016) #4.6
+preds %>% filter(year == 2017) #16.1
 preds %>% filter(year == 2014) #16.9
 
 
@@ -1116,10 +1116,10 @@ ggsave(paste0(path, "group_fds_bothyears.pdf"), width = 6.75, height = 6.5)
 
 ### Fit statistics for each ------------------------------------------------------------------------------------
 # change in change in prob for each compar:
-preds_fd_plot %>% filter(group == "Income") %>% select(group, level, pe) #0.72
-preds_fd_plot %>% filter(group == "Youth") %>% select(group, level, pe) # 18.34
-preds_fd_plot %>% filter(group == "Majority Race") %>% select(group, level, pe) #1.5
-preds_fd_plot %>% filter(group == "Education") %>% select(group, level, pe) # 4.52
+preds_fd_plot %>% filter(group == "Income") %>% select(group, level, pe) #0.73
+preds_fd_plot %>% filter(group == "Youth") %>% select(group, level, pe) # 16.18
+preds_fd_plot %>% filter(group == "Majority Race") %>% select(group, level, pe) #1.3
+preds_fd_plot %>% filter(group == "Education") %>% select(group, level, pe) # 4.5
 
 if (save_table){
 library(stargazer)

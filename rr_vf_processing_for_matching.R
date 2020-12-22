@@ -16,6 +16,7 @@ library(dplyr)
 library(tidyr)
 library(lubridate)
 library(stringr)
+library(purrr)
 
 
 ### load processed voterfile ---------------------------------------------------------------------------------------------------
@@ -70,6 +71,9 @@ vf2 <- voterfile %>%
   mutate(samp = map2(data, n_sample, sample_n)) %>% 
   select(NYCCD, samp) %>% 
   unnest(samp)
+
+# getting first PB vote year
+pbnyc <- read.csv(file = "pbnyc_district_votes.csv", as.is = TRUE) 
 
 vf2 <- pbnyc %>% 
   filter(districtCycle == 1) %>% 

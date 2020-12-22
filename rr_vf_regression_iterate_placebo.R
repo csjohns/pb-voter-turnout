@@ -213,4 +213,4 @@ meaneffect <- allout %>%
   drop_na() %>% 
   margins::dydx(allout$result[allout$model_name=="lme_comp"][[1]],  "after_pb", change = c(0,1), allow.new.levels = T) %>% 
   .$dydx_after_pb %>% mean() 
-
+saveRDS(meaneffect, file = "data/cleaned_R_results/placebo_pred_effect.rds")

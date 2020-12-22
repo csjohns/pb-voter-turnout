@@ -26,7 +26,7 @@ library(cem)
 
 # source("rr_vf_processing_full.R")
 
-suffix <- "_placebo"
+# suffix <- ""
 if (suffix == "") {set.seed(4142019)} 
 if (suffix == "_within_dist") {set.seed(5092019)}
 if (suffix == "_placebo") {set.seed(5092019)}
@@ -34,9 +34,9 @@ voterfile <- readRDS(paste0("data/cleaned_R_results/voterfile_for_matching", suf
 
 #### Implementing Matching, starting with exact ###-----------------------------------------------------------------------------------------------------------------------------------------------  # 
   
-## Exact matching to narrow field of possibility
-# source("rr_exact_match.R")
-# rm(exact_df)
+# ## Exact matching to narrow field of possibility
+source("rr_exact_match.R")
+rm(exact_df)
 
 ### Creating matching dataframe based on the potential matches from m.exact --------------------------------------------------------------------------------
 matchable_vans <- readRDS(paste0("data/cleaned_R_results/matchablevans", suffix, ".rds"))

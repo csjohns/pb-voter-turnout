@@ -42,7 +42,7 @@ matching_models <- tibble(match_type = match_names,
                           grouping = vector("list", length(match_names)))
 
 
-## load threshold lists (runn against full matching_df - generated in )
+## load threshold lists (runn against full matching_df - generated in rr_matching_cutpoints.r
 load("data/cleaned_R_results/cutpoints.Rdata")
 
 
@@ -153,31 +153,3 @@ for (i in 1:length(match_names)) {
     matching_models$grouping[[i]] <- keep_vars(super_group, matching_models$matching_fields[[i]])
   }
 }
-# 
-# 
-# 
-#   map2()
-#   list(fine_cuts,
-#                                   coarse_cuts,
-#                                   keep_vars(fine_cuts, "excl_compet"),
-#                                   keep_vars(fine_cuts, "dist_comp"),
-#                                   keep_vars(fine_cuts, "dist_white"),
-#                                   keep_vars(fine_cuts, "dist_medhhinc"),
-#                                   keep_vars(fine_cuts, "dist_college"),
-#                                   keep_vars(fine_cuts, "dist_inc13"),
-#                                   keep_vars(fine_cuts, "dist_inc17"),
-#                                   keep_vars(fine_cuts, "excl_dist"),
-#                                   keep_vars(fine_cuts, "excl_comp_dist"))
-# 
-# 
-# matching_models$grouping <- list(fine_group,
-#                                   coarse_group,
-#                                  keep_vars(fine_group, "excl_compet"),
-#                                  keep_vars(fine_group, "dist_comp"),
-#                                  keep_vars(fine_group, "dist_white"),
-#                                  keep_vars(fine_group, "dist_medhhinc"),
-#                                  keep_vars(fine_group, "dist_college"),
-#                                  keep_vars(fine_group, "dist_inc17"),
-#                                  keep_vars(fine_group, "dist_inc13"),
-#                                  keep_vars(fine_group, "excl_dist"),
-#                                  keep_vars(fine_group, "excl_comp_dist"))
